@@ -1,0 +1,46 @@
+
+#include "ATV_GlobalEvtReaderCallbacks.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_Unknown( OTF2_LocationRef locationID,
+    OTF2_TimeStamp time,
+    void * userData,
+    OTF2_AttributeList* attributeList) {
+
+    return OTF2_CALLBACK_SUCCESS;    
+}
+
+@otf2 for event in events:
+@otf2 with arg_name = event.lname + 'Callback'
+
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_@@event.name@@ ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    void* userData,
+    OTF2_AttributeList* attributeList@@event.funcargs()@@ ) {
+
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+@otf2 endwith
+@otf2 endfor
+
+OTF2_GlobalEvtReaderCallbacks * ATV_CreateGlobalEvtReaderCallbacks(void) {
+    OTF2_GlobalEvtReaderCallbacks* evt_callbacks = OTF2_GlobalEvtReaderCallbacks_New();
+    OTF2_GlobalEvtReaderCallbacks_SetUnknownCallback( evt_callbacks, ATV_GlobalEvtReaderCallback_Unknown );
+    @otf2 for event in events:
+    OTF2_GlobalEvtReaderCallbacks_Set@@event.name@@Callback( evt_callbacks, ATV_GlobalEvtReaderCallback_@@event.name@@ );
+    @otf2 endfor
+
+    return evt_callbacks;
+}
+
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+

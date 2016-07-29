@@ -1,0 +1,39 @@
+
+#include "ATV_DefReaderCallbacks.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+OTF2_CallbackCode ATV_DefReaderCallback_Unknown( void * userData ) {
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+@otf2 for def in defs|local_defs:
+@otf2 with arg_name = def.lname + 'Callback'
+
+OTF2_CallbackCode ATV_DefReaderCallback_@@def.name@@ ( void* userData @@def.funcargs()@@ ) {
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+@otf2 endwith
+@otf2 endfor
+
+OTF2_DefReaderCallbacks * ATV_CreateDefReaderCallbacks(void) {
+    OTF2_DefReaderCallbacks * def_callbacks = OTF2_DefReaderCallbacks_New();
+    OTF2_DefReaderCallbacks_SetUnknownCallback(def_callbacks, ATV_DefReaderCallback_Unknown);
+    @otf2 for def in defs|local_defs:
+    @otf2 with arg_name = def.lname + 'Callback'
+    OTF2_DefReaderCallbacks_Set@@def.name@@Callback( def_callbacks, ATV_DefReaderCallback_@@def.name@@ );
+    @otf2 endwith
+    @otf2 endfor
+
+    return def_callbacks;
+}
+
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+

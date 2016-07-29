@@ -10,6 +10,5 @@ INST_DIR=$PWD/build
 mkdir -p build
 cd $BUILD_DIR
 cmake $SOURCE_DIR -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$INST_DIR -DBOOST_ROOT=$BOOST_ROOT -DOTF2_ROOT=$OFT2_ROOT
-make
-make install
+make -j16 install
 cd $SOURCE_DIR
