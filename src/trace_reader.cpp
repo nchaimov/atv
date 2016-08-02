@@ -9,91 +9,47 @@
 #include <vector>
 #include <list>
 #include <cstdlib>
-
-#include <boost/program_options.hpp> 
-#define BOOST_FILESYSTEM_VERSION 3
-#define BOOST_FILESYSTEM_NO_DEPRECATED 
-#include <boost/filesystem.hpp> 
-#include <boost/range/iterator_range.hpp>
-#include <boost/lexical_cast.hpp>
-
+#include <stdexcept>
 
 #include <otf2/otf2.h>
 
+#include "trace_reader.hpp"
 #include "status.h"
 #include "callbacks.h"
 
-inline static void check_status(const OTF2_ErrorCode status, const std::string & msg) {
-    const char * errname = OTF2_Error_GetName(status);
-    const char * errdesc = OTF2_Error_GetDescription(status);
-    if(status != OTF2_SUCCESS) {
-        throw std::runtime_error(msg + ": " + errname + ": " + errdesc);
-    }
-}       
-
-template<typename T>
-inline static void check_ptr(const T* ptr, const std::string & msg) {
-    if(ptr == nullptr) {
-        throw std::runtime_error(msg + ": Null pointer");    
-    }
-}
 
 
-std::string process_command_line(int argc, char * argv[]) {
-    std::string filename;
-    try {
-        namespace po = boost::program_options; 
-        po::options_description desc("Options"); 
-        desc.add_options()
-            ("help,h", "print usage message")
-            ("filename", po::value<std::string>(&filename)->required(), "path to trace anchor file");
-        po::positional_options_description pos_opts;
-        pos_opts.add("filename", 1);
-        po::variables_map vm;
-        try {
-            po::store(po::command_line_parser(argc, argv).options(desc).positional(pos_opts).run(), vm);  
-            po::notify(vm);
 
-            if (vm.count("help")) {  
-                std::cout << desc << std::endl;
-                std::exit(0);
-            }
-
-        } catch(boost::program_options::required_option & e) {
-            std::cerr << "command line error: " << e.what() << std::endl;    
-            std::cerr << desc << std::endl;
-            std::exit(1);
-        }
-    } catch(std::exception & e) {
-        std::cerr << e.what() << std::endl;
-        std::exit(1);
-    }
-    return filename;
-}
-
-ATVStatus setup_reader(OTF2_Reader *& reader, std::string & filename) {
+TraceReader::TraceReader(std::string & filename, const TraceReader::locations_t & locations) : anchor(filename) {
     
+    this->locations = locations;
+
     reader = OTF2_Reader_Open(filename.c_str());
     if(reader == nullptr) {
         std::cerr << "Unable to open OTF2 anchor file at " << filename << std::endl;
-        return ATVStatus::ERROR;
+        throw std::runtime_error("Unable to open OTF2 anchor file.");
     }
 
     try {
-    OTF2_ErrorCode status;
-    
-    status = OTF2_Reader_SetSerialCollectiveCallbacks(reader);
-    check_status(status, "OTF2_Reader_SetSerialCollectiveCallbacks");
+        OTF2_ErrorCode status;
+        
+        status = OTF2_Reader_SetSerialCollectiveCallbacks(reader);
+        check_status(status, "OTF2_Reader_SetSerialCollectiveCallbacks");
 
     } catch(std::exception & e) {
-        std::cerr << e.what() << std::endl;
-        return ATVStatus::ERROR;
+        std::cerr << "Unable to setup OTF2 reader: " << e.what() << std::endl;
+        throw e;
     }
 
-    return ATVStatus::OK;
 }
 
-ATVStatus read_traces(OTF2_Reader * reader, const std::vector<uint64_t> & locations) {
+TraceReader::~TraceReader() {
+    if(reader != nullptr) {
+        OTF2_Reader_Close(reader);
+    }
+}
+
+ATVStatus TraceReader::read_traces() {
     if(reader == nullptr) {
         return ATVStatus::ERROR;
     }
@@ -202,57 +158,5 @@ ATVStatus read_traces(OTF2_Reader * reader, const std::vector<uint64_t> & locati
     }  
 
     return ATVStatus::OK;
-}
-
-std::vector<uint64_t> get_locations(std::string anchor) {
-    namespace fs = ::boost::filesystem;
-    const fs::path p(anchor);
-    if(!fs::exists(p)) {
-        throw std::runtime_error("Anchor file does not exist: " + p.string());
-    }
-    if(!fs::is_regular_file(p)) {
-        throw std::runtime_error("Anchor file is not a regular file: " + p.string());
-    }
-    const fs::path parent = p.parent_path();
-    const fs::path stem = p.stem();
-    fs::path local_dir = parent;
-    local_dir /= stem;
-    if(!fs::exists(local_dir)) {
-        throw std::runtime_error("Local files directory does not exist: " + local_dir.string());
-    }
-    if(!fs::is_directory(local_dir)) {
-        throw std::runtime_error("Local files path is not a directory: " + local_dir.string());
-    }
-    std::vector<uint64_t> locations;
-    for(auto & entry : boost::make_iterator_range(fs::directory_iterator(local_dir), {})) {
-        const fs::path e = entry.path();
-        const std::string ext = e.extension().string();
-        if(ext == ".def") {
-            const uint64_t loc = boost::lexical_cast<uint64_t>(e.stem().string());
-            locations.push_back(loc);
-        }
-    }
-    
-    return locations;
-
-}
-
-int main(int argc, char * argv[]) {
-
-    std::string filename = process_command_line(argc, argv);
-    std::vector<uint64_t> locations = get_locations(filename);
-
-    OTF2_Reader * reader;
-    ATVStatus status = setup_reader(reader, filename);
-    if(status == ATVStatus::ERROR) {
-        return 1;
-    }
-    status = read_traces(reader, locations);
-    
-    OTF2_ErrorCode err = OTF2_Reader_Close(reader);
-    check_status(err, "OTF2_Reader_Close");
-
-
-    return 0;
 }
 

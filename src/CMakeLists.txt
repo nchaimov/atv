@@ -8,11 +8,14 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIRECTORY})
 set(CALLBACK_FILES ATV_DefReaderCallbacks.cpp ATV_EvtReaderCallbacks.cpp ATV_GlobalDefReaderCallbacks.cpp ATV_GlobalEvtReaderCallbacks.cpp)
 add_library(callbacks OBJECT ${CALLBACK_FILES})
 
-add_executable (test_trace_read test_trace_read.cpp $<TARGET_OBJECTS:callbacks>)
-target_link_libraries(test_trace_read PUBLIC ${LIBS})
+set(READER_FILES trace_reader.cpp)
+add_library(trace_reader OBJECT ${READER_FILES})
+
+add_executable (atv main.cpp $<TARGET_OBJECTS:callbacks> $<TARGET_OBJECTS:trace_reader>)
+target_link_libraries(atv PUBLIC ${LIBS})
 
 
-INSTALL(TARGETS test_trace_read
+INSTALL(TARGETS atv
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
