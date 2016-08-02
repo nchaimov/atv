@@ -521,6 +521,76 @@ OTF2_CallbackCode ATV_GlobalEvtReaderCallback_TaskDestroy ( OTF2_LocationRef  lo
 OTF2_RegionRef region );
 
 
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_TaskRunnable ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region );
+
+
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_AddDependence ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef src,
+OTF2_RegionRef dest );
+
+
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_SatisfyDependence ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef src,
+OTF2_RegionRef dest );
+
+
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_DataAcquire ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef task,
+OTF2_RegionRef data,
+uint64_t size );
+
+
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_DataRelease ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef task,
+OTF2_RegionRef data,
+uint64_t size );
+
+
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_EventCreate ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region );
+
+
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_EventDestroy ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region );
+
+
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_DataCreate ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region,
+uint64_t size );
+
+
+OTF2_CallbackCode ATV_GlobalEvtReaderCallback_DataDestroy ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region );
+
+
 OTF2_GlobalEvtReaderCallbacks * ATV_CreateGlobalEvtReaderCallbacks(void);
 
 

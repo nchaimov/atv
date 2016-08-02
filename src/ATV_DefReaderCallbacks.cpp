@@ -1,7 +1,5 @@
 
 #include "ATV_DefReaderCallbacks.h"
-            
-#include <iostream>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,7 +28,6 @@ double standardDeviation ) {
 OTF2_CallbackCode ATV_DefReaderCallback_String ( void* userData ,
 OTF2_StringRef self,
 const char* string ) {
-    std::cerr << "string: " << string << std::endl;
     return OTF2_CALLBACK_SUCCESS;
 }
 

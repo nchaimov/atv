@@ -583,6 +583,85 @@ OTF2_CallbackCode ATV_EvtReaderCallback_TaskDestroy ( OTF2_LocationRef  location
 OTF2_RegionRef region );
 
 
+OTF2_CallbackCode ATV_EvtReaderCallback_TaskRunnable ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region );
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_AddDependence ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef src,
+OTF2_RegionRef dest );
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_SatisfyDependence ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef src,
+OTF2_RegionRef dest );
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_DataAcquire ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef task,
+OTF2_RegionRef data,
+uint64_t size );
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_DataRelease ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef task,
+OTF2_RegionRef data,
+uint64_t size );
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_EventCreate ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region );
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_EventDestroy ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region );
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_DataCreate ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region,
+uint64_t size );
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_DataDestroy ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region );
+
+
 OTF2_EvtReaderCallbacks * ATV_CreateEvtReaderCallbacks(void);
 
 

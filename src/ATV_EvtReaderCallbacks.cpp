@@ -762,6 +762,112 @@ OTF2_RegionRef region ) {
 }
 
 
+OTF2_CallbackCode ATV_EvtReaderCallback_TaskRunnable ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region ) {
+
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_AddDependence ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef src,
+OTF2_RegionRef dest ) {
+
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_SatisfyDependence ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef src,
+OTF2_RegionRef dest ) {
+
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_DataAcquire ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef task,
+OTF2_RegionRef data,
+uint64_t size ) {
+
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_DataRelease ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef task,
+OTF2_RegionRef data,
+uint64_t size ) {
+
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_EventCreate ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region ) {
+
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_EventDestroy ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region ) {
+
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_DataCreate ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region,
+uint64_t size ) {
+
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+
+OTF2_CallbackCode ATV_EvtReaderCallback_DataDestroy ( OTF2_LocationRef  locationID,
+    OTF2_TimeStamp time,
+    uint64_t event_position,
+    void* userData,
+    OTF2_AttributeList* attributeList,
+OTF2_RegionRef region ) {
+
+    return OTF2_CALLBACK_SUCCESS;
+}
+
+
 OTF2_EvtReaderCallbacks * ATV_CreateEvtReaderCallbacks(void) {
     OTF2_EvtReaderCallbacks* evt_callbacks = OTF2_EvtReaderCallbacks_New();
     OTF2_EvtReaderCallbacks_SetUnknownCallback( evt_callbacks, ATV_EvtReaderCallback_Unknown );
@@ -826,6 +932,15 @@ OTF2_EvtReaderCallbacks * ATV_CreateEvtReaderCallbacks(void) {
     OTF2_EvtReaderCallbacks_SetCallingContextSampleCallback( evt_callbacks, ATV_EvtReaderCallback_CallingContextSample );
     OTF2_EvtReaderCallbacks_SetTaskCreateCallback( evt_callbacks, ATV_EvtReaderCallback_TaskCreate );
     OTF2_EvtReaderCallbacks_SetTaskDestroyCallback( evt_callbacks, ATV_EvtReaderCallback_TaskDestroy );
+    OTF2_EvtReaderCallbacks_SetTaskRunnableCallback( evt_callbacks, ATV_EvtReaderCallback_TaskRunnable );
+    OTF2_EvtReaderCallbacks_SetAddDependenceCallback( evt_callbacks, ATV_EvtReaderCallback_AddDependence );
+    OTF2_EvtReaderCallbacks_SetSatisfyDependenceCallback( evt_callbacks, ATV_EvtReaderCallback_SatisfyDependence );
+    OTF2_EvtReaderCallbacks_SetDataAcquireCallback( evt_callbacks, ATV_EvtReaderCallback_DataAcquire );
+    OTF2_EvtReaderCallbacks_SetDataReleaseCallback( evt_callbacks, ATV_EvtReaderCallback_DataRelease );
+    OTF2_EvtReaderCallbacks_SetEventCreateCallback( evt_callbacks, ATV_EvtReaderCallback_EventCreate );
+    OTF2_EvtReaderCallbacks_SetEventDestroyCallback( evt_callbacks, ATV_EvtReaderCallback_EventDestroy );
+    OTF2_EvtReaderCallbacks_SetDataCreateCallback( evt_callbacks, ATV_EvtReaderCallback_DataCreate );
+    OTF2_EvtReaderCallbacks_SetDataDestroyCallback( evt_callbacks, ATV_EvtReaderCallback_DataDestroy );
 
     return evt_callbacks;
 }
