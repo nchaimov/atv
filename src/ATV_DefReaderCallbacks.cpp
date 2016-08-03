@@ -77,6 +77,8 @@ OTF2_StringRef name,
 OTF2_LocationType locationType,
 uint64_t numberOfEvents,
 OTF2_LocationGroupRef locationGroup ) {
+    TraceData * trace_data = static_cast<TraceData *>(userData);
+    trace_data->put_location(self, name, locationType, numberOfEvents, locationGroup);
     return OTF2_CALLBACK_SUCCESS;
 }
 
