@@ -87,14 +87,14 @@ int main(int argc, char * argv[]) {
     const TraceReader::locations_t locations = get_locations(filename);
 
     DefaultCallbacks callbacks;
-    TraceReader reader{filename, locations, &callbacks};
-    ATVStatus status = reader.read_traces();
+    
+    ATVStatus status;
+    {
+        TraceReader reader{filename, locations, &callbacks};
+        status = reader.read_traces();
+    }
 
     TraceData * trace_data = callbacks.get_trace_data();
-    for(const auto & loc_p : trace_data->get_locations()) {
-       const auto & loc = loc_p.second;
-       std::cerr << "Location: " << loc.get_loc() << " " << loc.get_name() << " in location group " << loc.get_parent().get_self() << " " << loc.get_parent().get_name() << " in system tree node " << loc.get_parent().get_parent().get_self() << " " << loc.get_parent().get_parent().get_name() << std::endl;
-    }
 
     if(status == ATVStatus::OK) {
         return 0;               

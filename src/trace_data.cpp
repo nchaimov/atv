@@ -24,8 +24,20 @@ TraceData::TraceData() :
             std::numeric_limits<OTF2_StringRef>::max(),
             OTF2_LOCATION_TYPE_UNKNOWN,
             std::numeric_limits<uint64_t>::max(),
-            std::numeric_limits<OTF2_LocationGroupRef>::max()){
-
+            std::numeric_limits<OTF2_LocationGroupRef>::max()),
+    invalid_region(this,
+            std::numeric_limits<OTF2_LocationRef>::max(),
+            std::numeric_limits<OTF2_RegionRef>::max(),
+            std::numeric_limits<OTF2_StringRef>::max(),
+            std::numeric_limits<OTF2_StringRef>::max(),
+            std::numeric_limits<OTF2_StringRef>::max(),
+            OTF2_REGION_ROLE_UNKNOWN,
+            OTF2_PARADIGM_UNKNOWN,
+            OTF2_REGION_FLAG_NONE,
+            std::numeric_limits<OTF2_StringRef>::max(),
+            std::numeric_limits<uint32_t>::max(),
+            std::numeric_limits<uint32_t>::max()) {
+    
 }
 
 TraceData::~TraceData() {
@@ -170,5 +182,46 @@ const TraceData::LocationGroup & TraceData::find_location_group(const OTF2_Locat
         }
     }
     return invalid_location_group;
+}
+
+const std::string & TraceData::Region::get_name() const {
+    if(name_str == nullptr) {
+        const std::string & name_from_map = trace_data->get_string(loc, name);
+        name_str = &name_from_map;
+    }
+    return *name_str;
+}
+
+const std::string & TraceData::Region::get_guid() const {
+    if(guid_str == nullptr) {
+        const std::string & guid_from_map = trace_data->get_string(loc, guid);
+        guid_str = &guid_from_map;
+    }
+    return *guid_str;
+}
+
+const std::string & TraceData::Region::get_desc() const {
+    if(desc_str == nullptr) {
+        const std::string & desc_from_map = trace_data->get_string(loc, desc);
+        desc_str = &desc_from_map;
+    }
+    return *desc_str;
+}
+
+void TraceData::put_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef self, const OTF2_StringRef name, const OTF2_StringRef guid, const OTF2_StringRef desc, const OTF2_RegionRole role, const OTF2_Paradigm paradigm, const OTF2_RegionFlag region_flag, const OTF2_StringRef source_file, const uint32_t begin_line_number, const uint32_t end_line_number) {
+    regions_map[loc_ref].emplace(std::piecewise_construct, std::forward_as_tuple(loc_ref), std::forward_as_tuple(this, loc_ref, self, name, guid, desc, role, paradigm, region_flag, source_file, begin_line_number, end_line_number));
+}
+    
+const TraceData::Region & TraceData::get_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef region_ref) {
+    const auto & map = regions_map[loc_ref];
+    const auto itr = map.find(region_ref);
+    if(itr != map.end()) {
+        return itr->second;
+    }
+    return invalid_region;
+}
+
+const TraceData::regions_map_t & TraceData::get_regions() {
+    return regions_map;
 }
 

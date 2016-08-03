@@ -94,6 +94,9 @@ OTF2_RegionFlag regionFlags,
 OTF2_StringRef sourceFile,
 uint32_t beginLineNumber,
 uint32_t endLineNumber ) {
+    TraceData * trace_data = static_cast<TraceData *>(userData);
+    const OTF2_LocationRef loc = trace_data->get_current_location();
+    trace_data->put_region(loc, self, name, canonicalName, description, regionRole, paradigm, regionFlags, sourceFile, beginLineNumber, endLineNumber);
     return OTF2_CALLBACK_SUCCESS;
 }
 

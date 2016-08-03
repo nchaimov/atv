@@ -101,6 +101,77 @@ public:
             
     };
 
+    class Region {
+        TraceData * trace_data;
+
+        const OTF2_LocationRef loc;
+        const OTF2_RegionRef self;
+        const OTF2_StringRef name;
+        const OTF2_StringRef guid;
+        const OTF2_StringRef desc;
+        const OTF2_RegionRole role;
+        const OTF2_Paradigm paradigm;
+        const OTF2_RegionFlag region_flag;
+        const OTF2_StringRef source_file;
+        const uint32_t begin_line_number;
+        const uint32_t end_line_number;
+
+        mutable std::string const * name_str;
+        mutable std::string const * guid_str;
+        mutable std::string const * desc_str;
+
+        public:
+        Region(const Region& mE)            = default;
+        Region(Region&& mE)                 = default;
+        Region& operator=(const Region& mE) = default;
+        Region& operator=(Region&& mE)      = default;
+
+        Region( TraceData * trace_data,
+                const OTF2_LocationRef loc,
+                const OTF2_RegionRef self,
+                const OTF2_StringRef name,
+                const OTF2_StringRef guid,
+                const OTF2_StringRef desc,
+                const OTF2_RegionRole role,
+                const OTF2_Paradigm paradigm,
+                const OTF2_RegionFlag region_flag,
+                const OTF2_StringRef source_file,
+                const uint32_t begin_line_number,
+                const uint32_t end_line_number)
+          : trace_data(trace_data),
+            loc(loc),
+            self(self),
+            name(name),
+            guid(guid),
+            desc(desc),
+            role(role),
+            paradigm(paradigm),
+            region_flag(region_flag),
+            source_file(source_file),
+            begin_line_number(begin_line_number),
+            end_line_number(end_line_number),
+            name_str(nullptr),
+            guid_str(nullptr),
+            desc_str(nullptr) {};
+
+        OTF2_LocationRef get_loc() const { return loc; };
+        OTF2_RegionRef get_self() const { return self; };
+        OTF2_StringRef get_name_ref() const { return name; };
+        OTF2_StringRef get_guid_ref() const { return name; };
+        OTF2_StringRef get_desc_ref() const { return name; };
+        OTF2_RegionRole get_role() const { return role; };
+        OTF2_Paradigm get_paradigm() const { return paradigm; };
+        OTF2_RegionFlag get_region_flag() const { return region_flag; };
+        OTF2_StringRef get_source_file_ref() const { return source_file; };
+        uint32_t get_begin_line_number() const { return begin_line_number; };
+        uint32_t get_end_line_number() const { return end_line_number; };
+
+        const std::string & get_name() const;
+        const std::string & get_guid() const;
+        const std::string & get_desc() const;
+            
+    };
+
 
 
 protected:
@@ -123,6 +194,11 @@ protected:
     using location_map_t = std::map<OTF2_LocationRef, Location>;
     location_map_t location_map;
     Location invalid_location;
+
+    using region_map_t = std::unordered_map<OTF2_RegionRef, Region>;
+    using regions_map_t = std::map<OTF2_LocationRef, region_map_t>;
+    regions_map_t regions_map;
+    Region invalid_region;
 
 
 public:
@@ -149,6 +225,10 @@ public:
     void put_location(const OTF2_LocationRef loc_ref, const OTF2_StringRef name, const OTF2_LocationType type, const uint64_t num_events, const OTF2_LocationGroupRef parent);
     const Location & get_location(const OTF2_LocationRef loc_ref);
     const location_map_t & get_locations();
+
+    void put_region(const OTF2_LocationRef loc, const OTF2_RegionRef self, const OTF2_StringRef name, const OTF2_StringRef guid, const OTF2_StringRef desc, const OTF2_RegionRole role, const OTF2_Paradigm paradigm, const OTF2_RegionFlag region_flag, const OTF2_StringRef source_file, const uint32_t begin_line_number, const uint32_t end_line_number);
+    const Region & get_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef region_ref);
+    const regions_map_t & get_regions();
 
 };
 
