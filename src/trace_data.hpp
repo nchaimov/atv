@@ -172,6 +172,76 @@ public:
             
     };
 
+    enum class EventType {
+        MeasurementOn,
+        MeasurementOff,
+        Enter,
+        Leave,
+        TaskCreate,
+        TaskDestroy,
+        TaskRunnable,
+        AddDependence,
+        SatisfyDependence,
+        DataAcquire,
+        DataRelease,
+        EventCreate,
+        EventDestroy,
+        DataCreate,
+        DataDestroy
+    };
+
+    class Event {
+        TraceData * trace_data;
+
+        const OTF2_LocationRef loc;
+        const EventType event_type;
+        const OTF2_TimeStamp time;
+        uint64_t event_position;
+        const OTF2_RegionRef object;
+        const OTF2_RegionRef subject;
+        const uint64_t size;
+
+
+        mutable Region const * object_region;
+        mutable Region const * subject_region;
+
+        public:
+        Event(const Event& mE)            = default;
+        Event(Event&& mE)                 = default;
+        Event& operator=(const Event& mE) = default;
+        Event& operator=(Event&& mE)      = default;
+
+        Event( TraceData * trace_data,
+                const OTF2_LocationRef loc,
+                const EventType event_type,
+                const OTF2_TimeStamp time,
+                uint64_t event_position,
+                const OTF2_RegionRef object,
+                const OTF2_RegionRef subject,
+                const uint64_t size)
+          : trace_data(trace_data),
+            loc(loc),
+            event_type(event_type),
+            time(time),
+            event_position(event_position),
+            object(object),
+            subject(subject),
+            size(size),
+            object_region(nullptr),
+            subject_region(nullptr) {};
+
+        OTF2_LocationRef get_loc() const { return loc; };
+        EventType get_event_type() const { return event_type; };
+        OTF2_TimeStamp get_time() const { return time; };
+        uint64_t get_event_position() const { return event_position; };
+        OTF2_RegionRef get_object_ref() const { return object; };
+        OTF2_RegionRef get_subject_ref() const { return subject; };
+        uint64_t get_size() const { return size; };
+
+        const Region & get_object() const;
+        const Region & get_subject() const;
+            
+    };
 
 
 protected:
@@ -199,6 +269,10 @@ protected:
     using regions_map_t = std::map<OTF2_LocationRef, region_map_t>;
     regions_map_t regions_map;
     Region invalid_region;
+
+    using event_list_t = std::vector<Event>;
+    using events_map_t = std::map<OTF2_LocationRef, event_list_t>;
+    events_map_t events_map;
 
 
 public:
@@ -229,6 +303,10 @@ public:
     void put_region(const OTF2_LocationRef loc, const OTF2_RegionRef self, const OTF2_StringRef name, const OTF2_StringRef guid, const OTF2_StringRef desc, const OTF2_RegionRole role, const OTF2_Paradigm paradigm, const OTF2_RegionFlag region_flag, const OTF2_StringRef source_file, const uint32_t begin_line_number, const uint32_t end_line_number);
     const Region & get_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef region_ref);
     const regions_map_t & get_regions();
+
+    
+    void put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size);
+    const event_list_t & get_events(const OTF2_LocationRef loc_ref);
 
 };
 

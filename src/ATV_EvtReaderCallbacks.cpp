@@ -1,9 +1,14 @@
 
+#include <limits>
 #include "ATV_EvtReaderCallbacks.h"
+#include "trace_data.hpp"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
+
+constexpr OTF2_RegionRef INVALID_REGION_ID = std::numeric_limits<OTF2_RegionRef>::max();
+constexpr uint64_t INVALID_SIZE = std::numeric_limits<uint64_t>::max();
 
 OTF2_CallbackCode ATV_EvtReaderCallback_Unknown( OTF2_LocationRef locationID,
     OTF2_TimeStamp time,
@@ -32,7 +37,9 @@ OTF2_CallbackCode ATV_EvtReaderCallback_MeasurementOnOff ( OTF2_LocationRef  loc
     void* userData,
     OTF2_AttributeList* attributeList,
 OTF2_MeasurementMode measurementMode ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    const TraceData::EventType type = measurementMode == OTF2_MEASUREMENT_ON ? TraceData::EventType::MeasurementOn : TraceData::EventType::MeasurementOff;
+    trace_data->put_event(locationID, type, time, event_position, INVALID_REGION_ID, INVALID_REGION_ID, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -43,7 +50,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_Enter ( OTF2_LocationRef  locationID,
     void* userData,
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef region ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::Enter, time, event_position, region, INVALID_REGION_ID, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -54,7 +62,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_Leave ( OTF2_LocationRef  locationID,
     void* userData,
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef region ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::Leave, time, event_position, region, INVALID_REGION_ID, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -746,7 +755,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_TaskCreate ( OTF2_LocationRef  locationI
     void* userData,
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef region ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::TaskCreate, time, event_position, region, INVALID_REGION_ID, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -757,7 +767,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_TaskDestroy ( OTF2_LocationRef  location
     void* userData,
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef region ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::TaskDestroy, time, event_position, region, INVALID_REGION_ID, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -768,7 +779,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_TaskRunnable ( OTF2_LocationRef  locatio
     void* userData,
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef region ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::TaskRunnable, time, event_position, region, INVALID_REGION_ID, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -780,7 +792,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_AddDependence ( OTF2_LocationRef  locati
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef src,
 OTF2_RegionRef dest ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::AddDependence, time, event_position, src, dest, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -792,7 +805,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_SatisfyDependence ( OTF2_LocationRef  lo
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef src,
 OTF2_RegionRef dest ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::SatisfyDependence, time, event_position, src, dest, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -805,7 +819,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_DataAcquire ( OTF2_LocationRef  location
 OTF2_RegionRef task,
 OTF2_RegionRef data,
 uint64_t size ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::DataAcquire, time, event_position, task, data, size);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -818,7 +833,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_DataRelease ( OTF2_LocationRef  location
 OTF2_RegionRef task,
 OTF2_RegionRef data,
 uint64_t size ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::DataRelease, time, event_position, task, data, size);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -829,7 +845,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_EventCreate ( OTF2_LocationRef  location
     void* userData,
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef region ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::EventCreate, time, event_position, region, INVALID_REGION_ID, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -840,7 +857,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_EventDestroy ( OTF2_LocationRef  locatio
     void* userData,
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef region ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::EventDestroy, time, event_position, region, INVALID_REGION_ID, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -852,7 +870,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_DataCreate ( OTF2_LocationRef  locationI
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef region,
 uint64_t size ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::DataCreate, time, event_position, region, INVALID_REGION_ID, size);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -863,7 +882,8 @@ OTF2_CallbackCode ATV_EvtReaderCallback_DataDestroy ( OTF2_LocationRef  location
     void* userData,
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef region ) {
-
+    TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->put_event(locationID, TraceData::EventType::DataDestroy, time, event_position, region, INVALID_REGION_ID, INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }
 

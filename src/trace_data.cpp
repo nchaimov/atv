@@ -111,7 +111,6 @@ const TraceData::SystemTreeNode & TraceData::LocationGroup::get_parent() const {
 }
 
 void TraceData::put_location_group(const OTF2_LocationRef loc_ref, const OTF2_LocationGroupRef loc_group_ref, const OTF2_StringRef name, const OTF2_LocationGroupType type, const OTF2_SystemTreeNodeRef parent) {
-    std::cerr << "Put location group: " << loc_group_ref << std::endl;
     location_groups_map[loc_ref].emplace(std::piecewise_construct, std::forward_as_tuple(loc_group_ref), std::forward_as_tuple(this, loc_ref, loc_group_ref, name, type, parent));
 }
 
@@ -225,3 +224,26 @@ const TraceData::regions_map_t & TraceData::get_regions() {
     return regions_map;
 }
 
+const TraceData::Region & TraceData::Event::get_object() const {
+    if(object_region == nullptr) {
+        const Region & object_from_map = trace_data->get_region(loc, object);
+        object_region = &object_from_map;
+    }
+    return *object_region;
+}
+
+const TraceData::Region & TraceData::Event::get_subject() const {
+    if(subject_region == nullptr) {
+        const Region & subject_from_map = trace_data->get_region(loc, subject);
+        subject_region = &subject_from_map;
+    }
+    return *subject_region;
+}
+
+void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size) {
+   events_map[loc_ref].emplace_back(this, loc_ref, event_type, time, event_position, object, subject, size); 
+}
+
+const TraceData::event_list_t & TraceData::get_events(const OTF2_LocationRef loc_ref) {
+    return events_map[loc_ref];
+}
