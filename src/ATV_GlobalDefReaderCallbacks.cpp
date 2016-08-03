@@ -1,5 +1,6 @@
 
 #include "ATV_GlobalDefReaderCallbacks.h"
+#include <iostream>
 
 #ifdef __cplusplus
 extern "C" {

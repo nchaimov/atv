@@ -12,7 +12,9 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include "status.hpp"
 #include "trace_reader.hpp"
+#include "callbacks.hpp"
 
 std::string process_command_line(int argc, char * argv[]) {
     std::string filename;
@@ -84,8 +86,26 @@ int main(int argc, char * argv[]) {
     std::string filename = process_command_line(argc, argv);
     const TraceReader::locations_t locations = get_locations(filename);
 
-    TraceReader reader{filename, locations};
+    DefaultCallbacks callbacks;
+    TraceReader reader{filename, locations, &callbacks};
     ATVStatus status = reader.read_traces();
+
+    TraceData * trace_data = callbacks.get_trace_data();
+    for(const auto & locs : trace_data->get_system_tree_nodes()) {
+        std::cerr << "loc: " << locs.first << std::endl;
+        for(const auto & node_pair : locs.second) {
+            const auto & node = node_pair.second;
+            std::cerr << "node: " << node.get_self() << " " << node.get_name() << " " << node.get_desc() << std::endl;
+        }
+    }
+
+    for(const auto & locs : trace_data->get_location_groups()) {
+        std::cerr << "loc: " << locs.first << std::endl;
+        for(const auto & group_pair : locs.second) {
+            const auto & group = group_pair.second;
+            std::cerr << "loc group: " << group.get_name() << " " << group.get_type() << std::endl;
+        }
+    }
 
     if(status == ATVStatus::OK) {
         return 0;               

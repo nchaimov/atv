@@ -5,10 +5,10 @@
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIRECTORY})
 
-set(CALLBACK_FILES ATV_DefReaderCallbacks.cpp ATV_EvtReaderCallbacks.cpp ATV_GlobalDefReaderCallbacks.cpp ATV_GlobalEvtReaderCallbacks.cpp)
+set(CALLBACK_FILES ATV_DefReaderCallbacks.cpp ATV_EvtReaderCallbacks.cpp ATV_GlobalDefReaderCallbacks.cpp ATV_GlobalEvtReaderCallbacks.cpp callbacks.cpp)
 add_library(callbacks OBJECT ${CALLBACK_FILES})
 
-set(READER_FILES trace_reader.cpp)
+set(READER_FILES trace_reader.cpp trace_data.cpp)
 add_library(trace_reader OBJECT ${READER_FILES})
 
 add_executable (atv main.cpp $<TARGET_OBJECTS:callbacks> $<TARGET_OBJECTS:trace_reader>)

@@ -6,7 +6,8 @@
 #include <cstdlib>
 #include <otf2/otf2.h>
 #include <stdexcept>
-#include "status.h"
+#include "status.hpp"
+#include "callbacks.hpp"
 
 class TraceReader {
 
@@ -33,8 +34,10 @@ class TraceReader {
     OTF2_Reader * reader;
     locations_t locations;
 
+    Callbacks * callbacks;
+
     public:
-    TraceReader(std::string & filename, const locations_t & locations);
+    TraceReader(std::string & filename, const locations_t & locations, Callbacks * callbacks);
     virtual ~TraceReader();
     ATVStatus read_traces();
 

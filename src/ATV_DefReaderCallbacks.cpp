@@ -1,5 +1,8 @@
 
+#include <iostream>
+
 #include "ATV_DefReaderCallbacks.h"
+#include "trace_data.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +31,9 @@ double standardDeviation ) {
 OTF2_CallbackCode ATV_DefReaderCallback_String ( void* userData ,
 OTF2_StringRef self,
 const char* string ) {
+    TraceData * trace_data = static_cast<TraceData *>(userData);
+    const OTF2_LocationRef loc = trace_data->get_current_location();
+    trace_data->put_string(loc, self, string);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -46,6 +52,9 @@ OTF2_SystemTreeNodeRef self,
 OTF2_StringRef name,
 OTF2_StringRef className,
 OTF2_SystemTreeNodeRef parent ) {
+    TraceData * trace_data = static_cast<TraceData *>(userData);
+    const OTF2_LocationRef loc = trace_data->get_current_location();
+    trace_data->put_system_tree_node(loc, self, name, className, parent);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -55,6 +64,9 @@ OTF2_LocationGroupRef self,
 OTF2_StringRef name,
 OTF2_LocationGroupType locationGroupType,
 OTF2_SystemTreeNodeRef systemTreeParent ) {
+    TraceData * trace_data = static_cast<TraceData *>(userData);
+    const OTF2_LocationRef loc = trace_data->get_current_location();
+    trace_data->put_location_group(loc, self, name, locationGroupType, systemTreeParent);
     return OTF2_CALLBACK_SUCCESS;
 }
 

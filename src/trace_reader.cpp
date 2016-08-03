@@ -13,17 +13,12 @@
 
 #include <otf2/otf2.h>
 
+#include "status.hpp"
+#include "callbacks.hpp"
 #include "trace_reader.hpp"
-#include "status.h"
-#include "callbacks.h"
 
-
-
-
-TraceReader::TraceReader(std::string & filename, const TraceReader::locations_t & locations) : anchor(filename) {
+TraceReader::TraceReader(std::string & filename, const TraceReader::locations_t & locations, Callbacks * callbacks) : anchor(filename), locations(locations), callbacks(callbacks) {
     
-    this->locations = locations;
-
     reader = OTF2_Reader_Open(filename.c_str());
     if(reader == nullptr) {
         std::cerr << "Unable to open OTF2 anchor file at " << filename << std::endl;
@@ -62,14 +57,17 @@ ATVStatus TraceReader::read_traces() {
         check_status(status, "OTF2_Reader_GetNumberOfLocations");
         std::cout << "num global locations: " << num_global_locations << std::endl;
 
+        void * user_data = callbacks->get_user_data();
+
         // Set global definition callbacks
         OTF2_GlobalDefReader * global_def_reader = OTF2_Reader_GetGlobalDefReader(reader);
         check_ptr(global_def_reader, "OTF2_Reader_GetGlobalDefReader");
-        OTF2_GlobalDefReaderCallbacks * global_def_callbacks = ATV_CreateGlobalDefReaderCallbacks();
-        check_ptr(global_def_callbacks, "ATV_CreateGlobalDefReaderCallbacks");
-        status = OTF2_Reader_RegisterGlobalDefCallbacks(reader, global_def_reader, global_def_callbacks, nullptr);
+        OTF2_GlobalDefReaderCallbacks * global_def_callbacks = callbacks->get_global_def_callbacks();
+        check_ptr(global_def_callbacks, "callbacks->get_global_def_callbacks");
+        if(global_def_callbacks != nullptr) {
+            status = OTF2_Reader_RegisterGlobalDefCallbacks(reader, global_def_reader, global_def_callbacks, user_data);
+        }
         check_status(status, "OTF2_Reader_RegisterGlobalDefCallbacks");
-        OTF2_GlobalDefReaderCallbacks_Delete(global_def_callbacks);
 
         // Read global definitions
         uint64_t definitions_read;
@@ -85,11 +83,12 @@ ATVStatus TraceReader::read_traces() {
             // Set global event callbacks
             OTF2_GlobalEvtReader * global_evt_reader = OTF2_Reader_GetGlobalEvtReader(reader);
             check_ptr(global_evt_reader, "OTF2_Reader_GetGlobalEvtReader");
-            OTF2_GlobalEvtReaderCallbacks * global_evt_callbacks = ATV_CreateGlobalEvtReaderCallbacks();
-            check_ptr(global_evt_callbacks, "ATV_CreateGlobalEvtReaderCallbacks");
-            status = OTF2_Reader_RegisterGlobalEvtCallbacks(reader, global_evt_reader, global_evt_callbacks, nullptr);
-            check_status(status, "OTF2_Reader_RegisterGlobalEvtCallbacks");
-            OTF2_GlobalEvtReaderCallbacks_Delete(global_evt_callbacks);
+            OTF2_GlobalEvtReaderCallbacks * global_evt_callbacks = callbacks->get_global_evt_callbacks();
+            check_ptr(global_evt_callbacks, "callbacks->get_global_evt_callbacks");
+            if(global_evt_callbacks != nullptr) {
+                status = OTF2_Reader_RegisterGlobalEvtCallbacks(reader, global_evt_reader, global_evt_callbacks, user_data);
+                check_status(status, "OTF2_Reader_RegisterGlobalEvtCallbacks");
+            }
 
             // Read global events
             uint64_t events_read;
@@ -103,6 +102,7 @@ ATVStatus TraceReader::read_traces() {
         }
 
         for(uint64_t loc : locations) {
+            callbacks->set_current_location(loc);
             // Set local definition callbacks
             status = OTF2_Reader_SelectLocation(reader, loc);
             check_status(status, "OTF2_Reader_SelectLocation");
@@ -110,11 +110,12 @@ ATVStatus TraceReader::read_traces() {
             check_status(status, "OTF2_Reader_OpenDefFiles");
             OTF2_DefReader* def_reader = OTF2_Reader_GetDefReader(reader, loc);
             check_ptr(def_reader, "OTF2_Reader_GetDefReader");
-            OTF2_DefReaderCallbacks * def_callbacks = ATV_CreateDefReaderCallbacks();
-            check_ptr(def_callbacks, "ATV_CreateDefReaderCallbacks");
-            status = OTF2_Reader_RegisterDefCallbacks(reader, def_reader, def_callbacks, nullptr);
-            check_status(status, "OTF2_Reader_RegisterDefCallbacks");
-            OTF2_DefReaderCallbacks_Delete(def_callbacks);
+            OTF2_DefReaderCallbacks * def_callbacks = callbacks->get_def_callbacks();
+            check_ptr(def_callbacks, "callbacks->get_def_callbacks");
+            if(def_callbacks != nullptr) {
+                status = OTF2_Reader_RegisterDefCallbacks(reader, def_reader, def_callbacks, user_data);
+                check_status(status, "OTF2_Reader_RegisterDefCallbacks");
+            }
 
             // Read local definitions
             uint64_t local_defs_read;
@@ -131,11 +132,12 @@ ATVStatus TraceReader::read_traces() {
             check_status(status, "OTF2_Reader_OpenEvtFiles");
             OTF2_EvtReader* evt_reader = OTF2_Reader_GetEvtReader(reader, loc);
             check_ptr(evt_reader, "OTF2_Reader_GetEvtReader");
-            OTF2_EvtReaderCallbacks * evt_callbacks = ATV_CreateEvtReaderCallbacks();
-            check_ptr(evt_callbacks, "ATV_CreateEvtReaderCallbacks");
-            status = OTF2_Reader_RegisterEvtCallbacks(reader, evt_reader, evt_callbacks, nullptr);
-            check_status(status, "OTF2_Reader_RegisterEvtCallbacks");
-            OTF2_EvtReaderCallbacks_Delete(evt_callbacks);
+            OTF2_EvtReaderCallbacks * evt_callbacks = callbacks->get_evt_callbacks();
+            check_ptr(evt_callbacks, "callbacks->get_evt_callbacks");
+            if(evt_callbacks != nullptr) {
+                status = OTF2_Reader_RegisterEvtCallbacks(reader, evt_reader, evt_callbacks, user_data);
+                check_status(status, "OTF2_Reader_RegisterEvtCallbacks");
+            }
 
             // Read local events
             uint64_t local_evts_read;
