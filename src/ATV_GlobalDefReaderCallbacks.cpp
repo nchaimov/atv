@@ -1,5 +1,6 @@
 
 #include "ATV_GlobalDefReaderCallbacks.h"
+#include "trace_data.hpp"
 #include <iostream>
 
 #ifdef __cplusplus
@@ -15,6 +16,8 @@ OTF2_CallbackCode ATV_GlobalDefReaderCallback_ClockProperties ( void* userData ,
 uint64_t timerResolution,
 uint64_t globalOffset,
 uint64_t traceLength ) {
+    TraceData * trace_data = static_cast<TraceData *>(userData);
+    trace_data->put_clock_properties(timerResolution, globalOffset, traceLength);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -292,37 +295,37 @@ uint64_t period ) {
 
 OTF2_GlobalDefReaderCallbacks * ATV_CreateGlobalDefReaderCallbacks(void) {
     OTF2_GlobalDefReaderCallbacks * global_def_callbacks = OTF2_GlobalDefReaderCallbacks_New();
-    OTF2_GlobalDefReaderCallbacks_SetUnknownCallback(global_def_callbacks, ATV_GlobalDefReaderCallback_Unknown);
+    //OTF2_GlobalDefReaderCallbacks_SetUnknownCallback(global_def_callbacks, ATV_GlobalDefReaderCallback_Unknown);
     OTF2_GlobalDefReaderCallbacks_SetClockPropertiesCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_ClockProperties );
-    OTF2_GlobalDefReaderCallbacks_SetParadigmCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Paradigm );
-    OTF2_GlobalDefReaderCallbacks_SetParadigmPropertyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_ParadigmProperty );
-    OTF2_GlobalDefReaderCallbacks_SetStringCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_String );
-    OTF2_GlobalDefReaderCallbacks_SetAttributeCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Attribute );
-    OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_SystemTreeNode );
-    OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_LocationGroup );
-    OTF2_GlobalDefReaderCallbacks_SetLocationCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Location );
-    OTF2_GlobalDefReaderCallbacks_SetRegionCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Region );
-    OTF2_GlobalDefReaderCallbacks_SetCallsiteCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Callsite );
-    OTF2_GlobalDefReaderCallbacks_SetCallpathCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Callpath );
-    OTF2_GlobalDefReaderCallbacks_SetGroupCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Group );
-    OTF2_GlobalDefReaderCallbacks_SetMetricMemberCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_MetricMember );
-    OTF2_GlobalDefReaderCallbacks_SetMetricClassCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_MetricClass );
-    OTF2_GlobalDefReaderCallbacks_SetMetricInstanceCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_MetricInstance );
-    OTF2_GlobalDefReaderCallbacks_SetCommCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Comm );
-    OTF2_GlobalDefReaderCallbacks_SetParameterCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Parameter );
-    OTF2_GlobalDefReaderCallbacks_SetRmaWinCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_RmaWin );
-    OTF2_GlobalDefReaderCallbacks_SetMetricClassRecorderCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_MetricClassRecorder );
-    OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodePropertyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_SystemTreeNodeProperty );
-    OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeDomainCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_SystemTreeNodeDomain );
-    OTF2_GlobalDefReaderCallbacks_SetLocationGroupPropertyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_LocationGroupProperty );
-    OTF2_GlobalDefReaderCallbacks_SetLocationPropertyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_LocationProperty );
-    OTF2_GlobalDefReaderCallbacks_SetCartDimensionCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_CartDimension );
-    OTF2_GlobalDefReaderCallbacks_SetCartTopologyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_CartTopology );
-    OTF2_GlobalDefReaderCallbacks_SetCartCoordinateCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_CartCoordinate );
-    OTF2_GlobalDefReaderCallbacks_SetSourceCodeLocationCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_SourceCodeLocation );
-    OTF2_GlobalDefReaderCallbacks_SetCallingContextCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_CallingContext );
-    OTF2_GlobalDefReaderCallbacks_SetCallingContextPropertyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_CallingContextProperty );
-    OTF2_GlobalDefReaderCallbacks_SetInterruptGeneratorCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_InterruptGenerator );
+    //OTF2_GlobalDefReaderCallbacks_SetParadigmCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Paradigm );
+    //OTF2_GlobalDefReaderCallbacks_SetParadigmPropertyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_ParadigmProperty );
+    //OTF2_GlobalDefReaderCallbacks_SetStringCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_String );
+    //OTF2_GlobalDefReaderCallbacks_SetAttributeCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Attribute );
+    //OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_SystemTreeNode );
+    //OTF2_GlobalDefReaderCallbacks_SetLocationGroupCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_LocationGroup );
+    //OTF2_GlobalDefReaderCallbacks_SetLocationCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Location );
+    //OTF2_GlobalDefReaderCallbacks_SetRegionCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Region );
+    //OTF2_GlobalDefReaderCallbacks_SetCallsiteCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Callsite );
+    //OTF2_GlobalDefReaderCallbacks_SetCallpathCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Callpath );
+    //OTF2_GlobalDefReaderCallbacks_SetGroupCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Group );
+    //OTF2_GlobalDefReaderCallbacks_SetMetricMemberCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_MetricMember );
+    //OTF2_GlobalDefReaderCallbacks_SetMetricClassCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_MetricClass );
+    //OTF2_GlobalDefReaderCallbacks_SetMetricInstanceCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_MetricInstance );
+    //OTF2_GlobalDefReaderCallbacks_SetCommCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Comm );
+    //OTF2_GlobalDefReaderCallbacks_SetParameterCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_Parameter );
+    //OTF2_GlobalDefReaderCallbacks_SetRmaWinCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_RmaWin );
+    //OTF2_GlobalDefReaderCallbacks_SetMetricClassRecorderCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_MetricClassRecorder );
+    //OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodePropertyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_SystemTreeNodeProperty );
+    //OTF2_GlobalDefReaderCallbacks_SetSystemTreeNodeDomainCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_SystemTreeNodeDomain );
+    //OTF2_GlobalDefReaderCallbacks_SetLocationGroupPropertyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_LocationGroupProperty );
+    //OTF2_GlobalDefReaderCallbacks_SetLocationPropertyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_LocationProperty );
+    //OTF2_GlobalDefReaderCallbacks_SetCartDimensionCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_CartDimension );
+    //OTF2_GlobalDefReaderCallbacks_SetCartTopologyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_CartTopology );
+    //OTF2_GlobalDefReaderCallbacks_SetCartCoordinateCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_CartCoordinate );
+    //OTF2_GlobalDefReaderCallbacks_SetSourceCodeLocationCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_SourceCodeLocation );
+    //OTF2_GlobalDefReaderCallbacks_SetCallingContextCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_CallingContext );
+    //OTF2_GlobalDefReaderCallbacks_SetCallingContextPropertyCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_CallingContextProperty );
+    //OTF2_GlobalDefReaderCallbacks_SetInterruptGeneratorCallback( global_def_callbacks, ATV_GlobalDefReaderCallback_InterruptGenerator );
 
     return global_def_callbacks;
 }

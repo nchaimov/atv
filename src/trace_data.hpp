@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <map>
 #include <vector>
+#include <limits>
 
 class TraceData {
 public:
@@ -274,8 +275,21 @@ protected:
     using events_map_t = std::map<OTF2_LocationRef, event_list_t>;
     events_map_t events_map;
 
+    uint64_t timer_resolution;
+    uint64_t global_offset;
+    uint64_t trace_length;
+
+
 
 public:
+
+    static constexpr OTF2_LocationRef INVALID_LOCATION_REF = std::numeric_limits<OTF2_LocationRef>::max();
+    static constexpr OTF2_SystemTreeNodeRef INVALID_SYSTEM_TREE_NODE_REF = std::numeric_limits<OTF2_SystemTreeNodeRef>::max();
+    static constexpr OTF2_StringRef INVALID_STRING_REF = std::numeric_limits<OTF2_StringRef>::max();
+    static constexpr OTF2_LocationGroupRef INVALID_LOCATION_GROUP_REF = std::numeric_limits<OTF2_LocationGroupRef>::max();
+    static constexpr OTF2_RegionRef INVALID_REGION_REF = std::numeric_limits<OTF2_RegionRef>::max();
+    static constexpr uint64_t INVALID_SIZE = std::numeric_limits<uint64_t>::max();
+    static constexpr uint32_t INVALID_LINE = std::numeric_limits<uint32_t>::max();
 
     TraceData();
     virtual ~TraceData();
@@ -289,25 +303,33 @@ public:
     void put_system_tree_node(const OTF2_LocationRef loc_ref, const OTF2_SystemTreeNodeRef node_ref, const OTF2_StringRef name, const OTF2_StringRef desc, const OTF2_SystemTreeNodeRef parent);
     const SystemTreeNode & get_system_tree_node(const OTF2_LocationRef loc_ref, const OTF2_SystemTreeNodeRef node_ref);
     const SystemTreeNode & find_system_tree_node(const OTF2_SystemTreeNodeRef node_ref);
-    const nodes_map_t & get_system_tree_nodes();
+    const nodes_map_t & get_system_tree_nodes() const;
 
     void put_location_group(const OTF2_LocationRef loc_ref, const OTF2_LocationGroupRef loc_group_ref, const OTF2_StringRef name, const OTF2_LocationGroupType type, const OTF2_SystemTreeNodeRef parent);
     const LocationGroup & get_location_group(const OTF2_LocationRef loc_ref, const OTF2_LocationGroupRef loc_group_ref);
     const LocationGroup & find_location_group(const OTF2_LocationGroupRef loc_group_ref);
-    const location_groups_map_t & get_location_groups();
+    const location_groups_map_t & get_location_groups() const;
 
     void put_location(const OTF2_LocationRef loc_ref, const OTF2_StringRef name, const OTF2_LocationType type, const uint64_t num_events, const OTF2_LocationGroupRef parent);
     const Location & get_location(const OTF2_LocationRef loc_ref);
-    const location_map_t & get_locations();
+    const location_map_t & get_locations() const;
 
     void put_region(const OTF2_LocationRef loc, const OTF2_RegionRef self, const OTF2_StringRef name, const OTF2_StringRef guid, const OTF2_StringRef desc, const OTF2_RegionRole role, const OTF2_Paradigm paradigm, const OTF2_RegionFlag region_flag, const OTF2_StringRef source_file, const uint32_t begin_line_number, const uint32_t end_line_number);
     const Region & get_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef region_ref);
-    const regions_map_t & get_regions();
+    const regions_map_t & get_regions() const;
 
-    
     void put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size);
     const event_list_t & get_events(const OTF2_LocationRef loc_ref);
 
+    void put_clock_properties(uint64_t timer_resolution, uint64_t global_offset, uint64_t trace_length) {
+        this->timer_resolution = timer_resolution;
+        this->global_offset = global_offset;
+        this->trace_length = trace_length;
+    };
+    
+    uint64_t get_timer_resolution() const { return timer_resolution; };
+    uint64_t get_global_offset() const { return global_offset; };
+    uint64_t get_trace_length() const { return trace_length; };
 };
 
 #endif // TRACE_DATA_HPP

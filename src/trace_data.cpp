@@ -1,42 +1,40 @@
 
-#include <limits>
 #include <iostream>
 #include <otf2/otf2.h>
 #include "trace_data.hpp"
 
-
 TraceData::TraceData() :
     cur_loc(0),
     invalid_system_tree_node(this, 
-            std::numeric_limits<OTF2_LocationRef>::max(),
-            std::numeric_limits<OTF2_SystemTreeNodeRef>::max(),
-            std::numeric_limits<OTF2_StringRef>::max(),
-            std::numeric_limits<OTF2_StringRef>::max(),
-            std::numeric_limits<OTF2_SystemTreeNodeRef>::max()),
+            INVALID_LOCATION_REF,
+            INVALID_SYSTEM_TREE_NODE_REF,
+            INVALID_STRING_REF,
+            INVALID_STRING_REF,
+            INVALID_SYSTEM_TREE_NODE_REF),
     invalid_location_group(this,
-            std::numeric_limits<OTF2_LocationRef>::max(),
-            std::numeric_limits<OTF2_LocationGroupRef>::max(),
-            std::numeric_limits<OTF2_StringRef>::max(),
+            INVALID_LOCATION_REF,
+            INVALID_LOCATION_GROUP_REF,
+            INVALID_STRING_REF,
             OTF2_LOCATION_GROUP_TYPE_UNKNOWN,
-            std::numeric_limits<OTF2_SystemTreeNodeRef>::max()),
+            INVALID_SYSTEM_TREE_NODE_REF),
     invalid_location(this,
-            std::numeric_limits<OTF2_LocationRef>::max(),
-            std::numeric_limits<OTF2_StringRef>::max(),
+            INVALID_LOCATION_REF,
+            INVALID_STRING_REF,
             OTF2_LOCATION_TYPE_UNKNOWN,
-            std::numeric_limits<uint64_t>::max(),
-            std::numeric_limits<OTF2_LocationGroupRef>::max()),
+            INVALID_SIZE,
+            INVALID_LOCATION_GROUP_REF),
     invalid_region(this,
-            std::numeric_limits<OTF2_LocationRef>::max(),
-            std::numeric_limits<OTF2_RegionRef>::max(),
-            std::numeric_limits<OTF2_StringRef>::max(),
-            std::numeric_limits<OTF2_StringRef>::max(),
-            std::numeric_limits<OTF2_StringRef>::max(),
+            INVALID_LOCATION_REF,
+            INVALID_REGION_REF,
+            INVALID_STRING_REF,
+            INVALID_STRING_REF,
+            INVALID_STRING_REF,
             OTF2_REGION_ROLE_UNKNOWN,
             OTF2_PARADIGM_UNKNOWN,
             OTF2_REGION_FLAG_NONE,
-            std::numeric_limits<OTF2_StringRef>::max(),
-            std::numeric_limits<uint32_t>::max(),
-            std::numeric_limits<uint32_t>::max()) {
+            INVALID_STRING_REF,
+            INVALID_LINE,
+            INVALID_LINE) {
     
 }
 
@@ -49,7 +47,12 @@ void TraceData::put_string(OTF2_LocationRef loc_ref, OTF2_StringRef str_ref, con
 }
 
 const std::string & TraceData::get_string(OTF2_LocationRef loc_ref, OTF2_StringRef str_ref) {
-   return strings_map[loc_ref][str_ref];
+    static std::string invalid_str("INVALID"); 
+    constexpr OTF2_StringRef invalid_str_ref = INVALID_STRING_REF;
+    if(str_ref == invalid_str_ref) {
+        return invalid_str;
+    }
+    return strings_map[loc_ref][str_ref];
 }
 
 OTF2_LocationRef TraceData::get_current_location() const {
@@ -73,7 +76,7 @@ const TraceData::SystemTreeNode & TraceData::get_system_tree_node(const OTF2_Loc
     return invalid_system_tree_node;
 }
 
-const TraceData::nodes_map_t & TraceData::get_system_tree_nodes() {
+const TraceData::nodes_map_t & TraceData::get_system_tree_nodes() const {
     return nodes_map;
 }
 
@@ -123,7 +126,7 @@ const TraceData::LocationGroup & TraceData::get_location_group(const OTF2_Locati
     return invalid_location_group;
 }
 
-const TraceData::location_groups_map_t & TraceData::get_location_groups() {
+const TraceData::location_groups_map_t & TraceData::get_location_groups() const {
     return location_groups_map;
 }
 
@@ -156,7 +159,7 @@ const TraceData::Location & TraceData::get_location(const OTF2_LocationRef loc_r
     return invalid_location;
 }
 
-const TraceData::location_map_t & TraceData::get_locations() {
+const TraceData::location_map_t & TraceData::get_locations() const {
     return location_map;
 }
 
@@ -208,7 +211,7 @@ const std::string & TraceData::Region::get_desc() const {
 }
 
 void TraceData::put_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef self, const OTF2_StringRef name, const OTF2_StringRef guid, const OTF2_StringRef desc, const OTF2_RegionRole role, const OTF2_Paradigm paradigm, const OTF2_RegionFlag region_flag, const OTF2_StringRef source_file, const uint32_t begin_line_number, const uint32_t end_line_number) {
-    regions_map[loc_ref].emplace(std::piecewise_construct, std::forward_as_tuple(loc_ref), std::forward_as_tuple(this, loc_ref, self, name, guid, desc, role, paradigm, region_flag, source_file, begin_line_number, end_line_number));
+    regions_map[loc_ref].emplace(std::piecewise_construct, std::forward_as_tuple(self), std::forward_as_tuple(this, loc_ref, self, name, guid, desc, role, paradigm, region_flag, source_file, begin_line_number, end_line_number));
 }
     
 const TraceData::Region & TraceData::get_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef region_ref) {
@@ -220,7 +223,7 @@ const TraceData::Region & TraceData::get_region(const OTF2_LocationRef loc_ref, 
     return invalid_region;
 }
 
-const TraceData::regions_map_t & TraceData::get_regions() {
+const TraceData::regions_map_t & TraceData::get_regions() const {
     return regions_map;
 }
 

@@ -95,6 +95,7 @@ int main(int argc, char * argv[]) {
     }
 
     TraceData * trace_data = callbacks.get_trace_data();
+    
 
     if(status == ATVStatus::OK) {
         return 0;               
