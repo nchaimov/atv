@@ -10,6 +10,7 @@
 #include <list>
 #include <cstdlib>
 #include <stdexcept>
+#include <functional>
 
 #include <otf2/otf2.h>
 
@@ -44,7 +45,7 @@ TraceReader::~TraceReader() {
     }
 }
 
-ATVStatus TraceReader::read_traces() {
+ATVStatus TraceReader::read_traces(std::function<void(uint64_t)> progress_callback) {
     if(reader == nullptr) {
         return ATVStatus::ERROR;
     }
@@ -101,6 +102,7 @@ ATVStatus TraceReader::read_traces() {
             check_status(status, "OTF2_Reader_CloseGlobalEvtReader");
         }
 
+        uint64_t locs_processed = 0;
         for(uint64_t loc : locations) {
             callbacks->set_current_location(loc);
             // Set local definition callbacks
@@ -147,6 +149,8 @@ ATVStatus TraceReader::read_traces() {
             status = OTF2_Reader_CloseEvtReader(reader, evt_reader);
             check_status(status, "OTF2_Reader_CloseEvtReader");
 
+            locs_processed++;
+            progress_callback(locs_processed);
         }
 
         // Cleanup

@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <otf2/otf2.h>
 #include <stdexcept>
+#include <functional>
 #include "status.hpp"
 #include "callbacks.hpp"
 
@@ -39,7 +40,7 @@ class TraceReader {
     public:
     TraceReader(std::string & filename, const locations_t & locations, Callbacks * callbacks);
     virtual ~TraceReader();
-    ATVStatus read_traces();
+    ATVStatus read_traces(std::function<void(uint64_t)> progress_callback);
 
 };
 

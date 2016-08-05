@@ -12,6 +12,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
 project(atv CXX)
 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 include(GitExternal)
 
 include(CheckCXXCompilerFlag)
@@ -109,6 +111,27 @@ else()
     message(FATAL_ERROR " could not find otf2-template; please add it to your PATH")
 endif()
     
+find_package(PkgConfig REQUIRED)
+# Use the package PkgConfig to detect GTKmm headers/library files
+pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
+# Setup CMake to use GTK+, tell the compiler where to look for headers
+# and to the linker where to look for libraries
+include_directories(${GTKMM_INCLUDE_DIRS})
+link_directories(${GTKMM_LIBRARY_DIRS})
+# Add other flags to the compiler
+add_definitions(${GTKMM_CFLAGS_OTHER})
+set(LIBS ${LIBS} ${GTKMM_LIBRARIES})
+
+# Use the package PkgConfig to detect CairoMM headers/library files
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CAIROMM REQUIRED cairomm-1.0)
+# Setup CMake to use GTK+, tell the compiler where to look for headers
+# and to the linker where to look for libraries
+include_directories(${CAIROMM_INCLUDE_DIRS})
+link_directories(${CAIROMM_LIBRARY_DIRS})
+# Add other flags to the compiler
+add_definitions(${CAIROMM_CFLAGS_OTHER})
+set(LIBS ${LIBS} ${CAIROMM_LIBRARIES})
 
 add_subdirectory(templates)
 add_subdirectory(src)
