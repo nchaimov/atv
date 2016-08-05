@@ -34,7 +34,8 @@ TraceData::TraceData() :
             OTF2_REGION_FLAG_NONE,
             INVALID_STRING_REF,
             INVALID_LINE,
-            INVALID_LINE) {
+            INVALID_LINE),
+    next_seq_id(0) {
     
 }
 
@@ -244,9 +245,29 @@ const TraceData::Region & TraceData::Event::get_subject() const {
 }
 
 void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size) {
-   events_map[loc_ref].emplace_back(this, loc_ref, event_type, time, event_position, object, subject, size); 
+    if(event_type == EventType::Enter || event_type == EventType::Leave) {
+        compute_events_map[loc_ref].emplace_back(this, loc_ref, event_type, time, event_position, object, subject, size, get_seq_id(get_region(loc_ref, object).get_name())); 
+    } else {
+        other_events_map[loc_ref].emplace_back(this, loc_ref, event_type, time, event_position, object, subject, size, -1); 
+    }
 }
 
-const TraceData::event_list_t & TraceData::get_events(const OTF2_LocationRef loc_ref) {
-    return events_map[loc_ref];
+const TraceData::event_list_t & TraceData::get_compute_events(const OTF2_LocationRef loc_ref) {
+    return compute_events_map[loc_ref];
+}
+
+const TraceData::event_list_t & TraceData::get_other_events(const OTF2_LocationRef loc_ref) {
+    return other_events_map[loc_ref];
+}
+
+int TraceData::get_seq_id(const std::string & name) {
+    const auto itr = name_map.find(name);
+    if(itr != name_map.end()) {
+        return itr->second;    
+    } else {
+        const int new_id = next_seq_id++;
+        std::cerr << "New id: " << new_id << " for " << name << std::endl;
+        name_map[name] = new_id;
+        return new_id;
+    }
 }

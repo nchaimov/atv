@@ -28,12 +28,12 @@ private:
     OTF2_EvtReaderCallbacks * evt_callbacks;
     TraceData * trace_data;
 public:
-    virtual OTF2_GlobalDefReaderCallbacks * get_global_def_callbacks() const;
-    virtual OTF2_GlobalEvtReaderCallbacks * get_global_evt_callbacks() const;
-    virtual OTF2_DefReaderCallbacks * get_def_callbacks() const;
-    virtual OTF2_EvtReaderCallbacks * get_evt_callbacks() const;
-    virtual void set_current_location(const OTF2_LocationRef ref);
-    virtual void * get_user_data() const;
+    virtual OTF2_GlobalDefReaderCallbacks * get_global_def_callbacks() const override;
+    virtual OTF2_GlobalEvtReaderCallbacks * get_global_evt_callbacks() const override;
+    virtual OTF2_DefReaderCallbacks * get_def_callbacks() const override;
+    virtual OTF2_EvtReaderCallbacks * get_evt_callbacks() const override;
+    virtual void set_current_location(const OTF2_LocationRef ref) override;
+    virtual void * get_user_data() const override;
     TraceData * get_trace_data() const;
     DefaultCallbacks();
     virtual ~DefaultCallbacks();

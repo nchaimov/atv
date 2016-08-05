@@ -62,6 +62,7 @@ void MainWindow::update_status(uint64_t num_locs) {
     if(num_locs == max_loc) {
         load_progress.hide();
         sep.hide();
+        Gtk::Main::iteration(true);
         new_data_signal.emit(num_locs, callbacks.get_trace_data());
     }
     Gtk::Main::iteration(true);

@@ -205,6 +205,7 @@ public:
 
         mutable Region const * object_region;
         mutable Region const * subject_region;
+        const int seq_entry_id;
 
         public:
         Event(const Event& mE)            = default;
@@ -219,7 +220,8 @@ public:
                 uint64_t event_position,
                 const OTF2_RegionRef object,
                 const OTF2_RegionRef subject,
-                const uint64_t size)
+                const uint64_t size,
+                const int seq_entry_id)
           : trace_data(trace_data),
             loc(loc),
             event_type(event_type),
@@ -229,7 +231,8 @@ public:
             subject(subject),
             size(size),
             object_region(nullptr),
-            subject_region(nullptr) {};
+            subject_region(nullptr),
+            seq_entry_id(seq_entry_id) {};
 
         OTF2_LocationRef get_loc() const { return loc; };
         EventType get_event_type() const { return event_type; };
@@ -238,6 +241,7 @@ public:
         OTF2_RegionRef get_object_ref() const { return object; };
         OTF2_RegionRef get_subject_ref() const { return subject; };
         uint64_t get_size() const { return size; };
+        int get_seq_entry_id() const { return seq_entry_id; };
 
         const Region & get_object() const;
         const Region & get_subject() const;
@@ -273,12 +277,16 @@ protected:
 
     using event_list_t = std::vector<Event>;
     using events_map_t = std::map<OTF2_LocationRef, event_list_t>;
-    events_map_t events_map;
+    events_map_t other_events_map;
+    events_map_t compute_events_map;
 
     uint64_t timer_resolution;
     uint64_t global_offset;
     uint64_t trace_length;
 
+    int next_seq_id;
+    using name_map_t = std::map<std::string, int>;
+    name_map_t name_map;
 
 
 public:
@@ -319,7 +327,8 @@ public:
     const regions_map_t & get_regions() const;
 
     void put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size);
-    const event_list_t & get_events(const OTF2_LocationRef loc_ref);
+    const event_list_t & get_compute_events(const OTF2_LocationRef loc_ref);
+    const event_list_t & get_other_events(const OTF2_LocationRef loc_ref);
 
     void put_clock_properties(uint64_t timer_resolution, uint64_t global_offset, uint64_t trace_length) {
         this->timer_resolution = timer_resolution;
@@ -330,6 +339,8 @@ public:
     uint64_t get_timer_resolution() const { return timer_resolution; };
     uint64_t get_global_offset() const { return global_offset; };
     uint64_t get_trace_length() const { return trace_length; };
+
+    int get_seq_id(const std::string &  name);
 };
 
 #endif // TRACE_DATA_HPP
