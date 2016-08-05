@@ -35,9 +35,15 @@ protected:
     const TraceReader::locations_t locations;
     DefaultCallbacks callbacks;
 
+    int last_width;
+    int last_height;
+
     bool setup_load_traces(GdkEventAny * event);
     void load_traces();
     void update_status(uint64_t num_locs);
+
+    virtual bool on_configure_event(GdkEventConfigure* configure_event) override;
+
 };
 
 

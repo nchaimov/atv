@@ -14,14 +14,18 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    set_title("APEX Trace Viewer");
    set_border_width(10);
    set_default_size(800,600);
+   last_width=800;
+   last_height=600;
    
    signal_map_event().connect(sigc::mem_fun(*this, &MainWindow::setup_load_traces));
    new_data_event().connect(sigc::mem_fun(trace_area, &TraceArea::on_new_data));
 
    add(box);
+   box.set_hexpand(true);
+   box.set_vexpand(true);
    box.pack_start(load_progress, Gtk::PACK_SHRINK, 5);
    box.pack_start(sep, Gtk::PACK_SHRINK);
-   box.pack_start(trace_area);
+   box.pack_start(trace_area, Gtk::PACK_EXPAND_WIDGET);
    load_progress.set_halign(Gtk::ALIGN_FILL);
    load_progress.set_valign(Gtk::ALIGN_CENTER);
    load_progress.set_show_text(true);
@@ -58,7 +62,6 @@ void MainWindow::update_status(uint64_t num_locs) {
     std::stringstream ss;
     ss << "Location " << num_locs << " of " << max_loc;
     load_progress.set_text(ss.str());
-    std::cerr << ss.str() << std::endl;
     if(num_locs == max_loc) {
         load_progress.hide();
         sep.hide();
@@ -71,4 +74,16 @@ void MainWindow::update_status(uint64_t num_locs) {
 
 MainWindow::new_data_signal_t MainWindow::new_data_event() const {
     return new_data_signal;
+}
+
+
+bool MainWindow::on_configure_event(GdkEventConfigure* configure_event) {
+    std::cerr << "configure window width: " << configure_event->width << " height: " << configure_event->height << std::endl;
+    if(configure_event->width != last_width || configure_event->height != last_height) {
+        std::cerr << "calling redraw" << std::endl;
+        trace_area.redraw();    
+        last_width = configure_event->width;
+        last_height = configure_event->height;
+    }
+    return false;
 }
