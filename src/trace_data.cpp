@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <iostream>
 #include <otf2/otf2.h>
 #include "trace_data.hpp"
@@ -271,3 +272,15 @@ int TraceData::get_seq_id(const std::string & name) {
         return new_id;
     }
 }
+
+TraceData::event_list_t::const_iterator TraceData::get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time) {
+    struct timestamp_compare {
+        bool operator()(const TraceData::Event & left, const TraceData::Event & right) {
+            return left.get_time() < right.get_time();
+        };
+    };
+    TraceData::Event target(this, loc_ref, TraceData::EventType::Artificial, time, 0, INVALID_REGION_REF, INVALID_REGION_REF, INVALID_SIZE, 0);
+    const auto & vect = compute_events_map[loc_ref];
+    return std::lower_bound(vect.begin(), vect.end(), target, timestamp_compare());
+}
+

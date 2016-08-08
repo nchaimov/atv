@@ -188,7 +188,9 @@ public:
         EventCreate,
         EventDestroy,
         DataCreate,
-        DataDestroy
+        DataDestroy,
+        Artificial,
+        Unknown
     };
 
     class Event {
@@ -329,6 +331,7 @@ public:
     void put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size);
     const event_list_t & get_compute_events(const OTF2_LocationRef loc_ref);
     const event_list_t & get_other_events(const OTF2_LocationRef loc_ref);
+    event_list_t::const_iterator get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);
 
     void put_clock_properties(uint64_t timer_resolution, uint64_t global_offset, uint64_t trace_length) {
         this->timer_resolution = timer_resolution;

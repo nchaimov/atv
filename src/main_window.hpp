@@ -7,6 +7,7 @@
 #include <gtkmm/drawingarea.h>
 #include <gtkmm/separator.h>
 #include <gtkmm/progressbar.h>
+#include <gtkmm/builder.h>
 
 #include "status.hpp"
 #include "trace_reader.hpp"
@@ -28,6 +29,8 @@ protected:
     Gtk::Separator sep;
     Gtk::ProgressBar load_progress;
     TraceArea trace_area;
+    Glib::RefPtr<Gtk::Builder> builder;
+
 
     new_data_signal_t new_data_signal;
 
@@ -39,6 +42,7 @@ protected:
     int last_height;
 
     bool setup_load_traces(GdkEventAny * event);
+    void setup_toolbar();
     void load_traces();
     void update_status(uint64_t num_locs);
 
