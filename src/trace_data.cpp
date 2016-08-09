@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <otf2/otf2.h>
 #include "trace_data.hpp"
 
@@ -247,10 +248,25 @@ const TraceData::Region & TraceData::Event::get_subject() const {
 }
 
 void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size) {
+    Event * event;
     if(event_type == EventType::Enter || event_type == EventType::Leave) {
-        compute_events_map[loc_ref].emplace_back(this, loc_ref, event_type, time, event_position, object, subject, size, get_seq_id(get_region(loc_ref, object).get_name())); 
+        auto & vect = compute_events_map[loc_ref];
+        vect.emplace_back(this, loc_ref, event_type, time, event_position, object, subject, size, get_seq_id(get_region(loc_ref, object).get_name())); 
+        event = &(vect.back());
     } else {
-        other_events_map[loc_ref].emplace_back(this, loc_ref, event_type, time, event_position, object, subject, size, -1); 
+        auto & vect = other_events_map[loc_ref];
+        vect.emplace_back(this, loc_ref, event_type, time, event_position, object, subject, size, -1); 
+        event = &(vect.back());
+    }
+
+    if(object != INVALID_REGION_REF) {
+        const std::string & object_guid = event->get_object().get_guid();
+        guid_map[object_guid].emplace_back(event);
+    }
+
+    if(subject != INVALID_REGION_REF) {
+        const std::string & subject_guid = event->get_subject().get_guid();
+        guid_map[subject_guid].emplace_back(event);
     }
 }
 
@@ -297,9 +313,30 @@ TraceData::maybe_event_pair_t TraceData::get_task_at_time(const OTF2_LocationRef
     }
     // Make sure that the event is active during the time
     if(enter_it->get_time() > time || leave_it->get_time() < time) {
-        std::cerr << "Outside bounds." << std::endl;
         return boost::none;
     } 
     return event_pair_t(*enter_it, *leave_it);
+}
+
+std::string TraceData::get_task_name_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, bool also_guid, bool markup) {
+    auto events = get_task_at_time(loc_ref, time);
+    std::stringstream ss;
+    if(events) {
+        if(markup) {
+            ss << "<b>";
+        }
+        ss << events->first.get_object().get_name();
+        if(markup) {
+            ss << "</b>";
+        }
+        if(also_guid) {
+            ss << " " << events->first.get_object().get_guid();
+        }
+    }
+    return ss.str();
+}
+
+TraceData::event_ptr_list_t & TraceData::get_events_for_guid(const std::string & guid) {
+    return guid_map[guid];
 }
 

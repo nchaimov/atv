@@ -241,6 +241,7 @@ public:
         OTF2_LocationRef get_loc() const { return loc; };
         EventType get_event_type() const { return event_type; };
         OTF2_TimeStamp get_time() const { return time; };
+        double get_seconds() const { return (double)get_time() / (double)trace_data->get_timer_resolution(); };
         uint64_t get_event_position() const { return event_position; };
         OTF2_RegionRef get_object_ref() const { return object; };
         OTF2_RegionRef get_subject_ref() const { return subject; };
@@ -302,6 +303,10 @@ protected:
     using event_pair_t = std::pair<const Event&, const Event&>;
     using maybe_event_pair_t = const boost::optional<const event_pair_t>;
 
+    using event_ptr_list_t = std::vector<const Event *>;
+    using guid_map_t = std::unordered_map<std::string,event_ptr_list_t>;
+    guid_map_t guid_map;
+
 public:
 
     static constexpr OTF2_LocationRef INVALID_LOCATION_REF = std::numeric_limits<OTF2_LocationRef>::max();
@@ -344,6 +349,9 @@ public:
     const event_list_t & get_other_events(const OTF2_LocationRef loc_ref);
     event_list_t::const_iterator get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);
     maybe_event_pair_t get_task_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);   
+    std::string get_task_name_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, bool also_guid=false, bool markup=false);
+
+    event_ptr_list_t & get_events_for_guid(const std::string & guid);
 
     void put_clock_properties(uint64_t timer_resolution, uint64_t global_offset, uint64_t trace_length) {
         this->timer_resolution = timer_resolution;

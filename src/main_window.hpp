@@ -8,6 +8,10 @@
 #include <gtkmm/separator.h>
 #include <gtkmm/progressbar.h>
 #include <gtkmm/builder.h>
+#include <gtkmm/liststore.h>
+#include <gtkmm/treemodelcolumn.h>
+#include <gtkmm/toolbar.h>
+#include <gtkmm/label.h>
 
 #include "status.hpp"
 #include "trace_reader.hpp"
@@ -24,13 +28,17 @@ public:
     using new_data_signal_t = sigc::signal<void, uint64_t, TraceData*>;
     new_data_signal_t new_data_event() const;
 
+    void set_task_label_text(const Glib::ustring& str);
+
 protected:
     Gtk::VBox box;
     Gtk::Separator sep;
     Gtk::ProgressBar load_progress;
     TraceArea trace_area;
     Glib::RefPtr<Gtk::Builder> builder;
-
+    Gtk::Toolbar * top_bar;
+    Gtk::Toolbar * bottom_bar;
+    Gtk::Label * task_label;
 
     new_data_signal_t new_data_signal;
 
@@ -41,12 +49,27 @@ protected:
     int last_width;
     int last_height;
 
-    bool setup_load_traces(GdkEventAny * event);
-    void setup_toolbar();
-    void load_traces();
-    void update_status(uint64_t num_locs);
+    virtual bool setup_load_traces(GdkEventAny * event);
+    virtual void setup_toolbar();
+    virtual void load_traces();
+    virtual void update_status(uint64_t num_locs);
 
     virtual bool on_configure_event(GdkEventConfigure* configure_event) override;
+    virtual void on_view_changed();
+
+    class ViewsComboBoxModel : public Gtk::TreeModelColumnRecord {
+    public:
+        
+    ViewsComboBoxModel()
+        { add(view_name); add(view_num); }
+        
+    Gtk::TreeModelColumn<Glib::ustring> view_name;
+    Gtk::TreeModelColumn<int> view_num;
+    };
+
+    ViewsComboBoxModel columns;
+
+    Glib::RefPtr<Gtk::ListStore> list_store;
 
 };
 

@@ -8,6 +8,7 @@
 #include <cairomm/context.h>
 #include <cairomm/surface.h>
 
+#include <glibmm.h>
 #include <gtkmm/builder.h>
 #include <gtkmm/menu.h>
 #include <giomm/menu.h>
@@ -15,7 +16,8 @@
 TraceArea::TraceArea(MainWindow * main_window) : num_locs(0), trace_data(nullptr), main_window(main_window), menu(nullptr) {
     set_hexpand(true);
     set_vexpand(true);
-    add_events(Gdk::BUTTON_MOTION_MASK | Gdk::BUTTON_PRESS_MASK | Gdk::BUTTON_RELEASE_MASK);
+    add_events(Gdk::POINTER_MOTION_MASK | Gdk::BUTTON_MOTION_MASK 
+            | Gdk::BUTTON_PRESS_MASK | Gdk::BUTTON_RELEASE_MASK);
 }
 
 TraceArea::~TraceArea() {
@@ -29,8 +31,8 @@ void TraceArea::redraw() {
 
 void TraceArea::unzoom() {
     zoom = false;
-    select_start = 0.0;
-    select_stop = trace_data->get_trace_length();
+    zoom_start = 0.0;
+    zoom_stop = trace_data->get_trace_length();
     //main_window->lookup_action("win.unzoom")->set_sensitive(false);
     //main_window->lookup_action("win.zoom_in")->set_sensitive(true);
     //main_window->lookup_action("win.zoom_out")->set_sensitive(false);
@@ -39,19 +41,19 @@ void TraceArea::unzoom() {
 
 void TraceArea::zoom_in() {
     // Zoom in on center
-    const double center = (select_start + select_stop) / 2.0;
-    select_start = (select_start + center) / 2.0;
-    select_stop = (center + select_stop) / 2.0;
+    const double center = (zoom_start + zoom_stop) / 2.0;
+    zoom_start = (zoom_start + center) / 2.0;
+    zoom_stop = (center + zoom_stop) / 2.0;
     zoom = true;
     redraw();
 }
 
 void TraceArea::zoom_out() {
     if(zoom) {
-        const double center = (select_start + select_stop) / 2.0;
-        select_start = (2*select_start) - center;
-        select_stop  = (2*select_stop) - center;
-        if(select_start <= 0 || select_stop >= trace_data->get_trace_length()) {
+        const double center = (zoom_start + zoom_stop) / 2.0;
+        zoom_start = (2*zoom_start) - center;
+        zoom_stop  = (2*zoom_stop) - center;
+        if(zoom_start <= 0 || zoom_stop >= trace_data->get_trace_length()) {
             unzoom();
         } else {
             redraw();
@@ -85,8 +87,8 @@ void TraceArea::draw_separators(const Cairo::RefPtr<Cairo::Context>& cr) {
         cr->user_to_device(unused, y_pos);
         y_pos = std::ceil(y_pos);
         cr->device_to_user(unused, y_pos);
-        cr->move_to(select_start, y_pos);
-        cr->line_to(select_stop + select_start,  y_pos);
+        cr->move_to(zoom_start, y_pos);
+        cr->line_to(zoom_stop + zoom_start,  y_pos);
         cr->stroke();
     }
     cr->restore();
@@ -99,8 +101,8 @@ void TraceArea::draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr) {
         uint64_t last_enter = 0;
         const double top_of_row = (loc*height_per_loc) + ((loc-1.0)*spacing_between_locs)  + 10.0;
         const auto & events = trace_data->get_compute_events(loc);
-        auto start_iterator = zoom ? trace_data->get_compute_event_at_time(loc, select_start+global_offset) : events.begin();
-        auto stop_iterator = zoom ? trace_data->get_compute_event_at_time(loc, select_stop+global_offset) : events.end();
+        auto start_iterator = zoom ? trace_data->get_compute_event_at_time(loc, zoom_start+global_offset) : events.begin();
+        auto stop_iterator = zoom ? trace_data->get_compute_event_at_time(loc, zoom_stop+global_offset) : events.end();
         // We want to go one back and one forward so that we draw an event
         // even if we are zoomed in so far that the start is before the
         // zoom region and the end is after the zoom region
@@ -133,36 +135,43 @@ void TraceArea::draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->restore();
 }
 
+void TraceArea::set_scale(const Cairo::RefPtr<Cairo::Context>& cr) {
+    Gtk::Allocation allocation = get_allocation();
+    const int width = allocation.get_width();
+    const int height = allocation.get_height();
+    double logical_height = (height_per_loc*num_locs) + ((spacing_between_locs)*(num_locs-1.0));
+    double logical_width;
+    std::cerr << "set scale width: " << width << " height: " << height << std::endl;
+    if(zoom) {
+        logical_width = zoom_stop - zoom_start;
+    } else {
+        logical_width = trace_data->get_trace_length();
+    }
+    std::cerr << "logical width: " << logical_width << std::endl;
+
+    // Scale so right of selected area is offscreen
+    // logical zoom_stop == physical width
+    const double x_scale = (double)width/logical_width;
+    const double y_scale = (double)height/logical_height;
+    std::cerr << "x scale: " << x_scale << " y_scale: " << y_scale << std::endl;
+    cr->scale(x_scale, y_scale);
+    // Move origin so left of selected area is offscreen
+    // logical select_start == 0
+    if(zoom) {
+        cr->translate(-zoom_start, 0.0);
+    }
+}
+
 void TraceArea::draw_into_local_surface() {
     Gtk::Allocation allocation = get_allocation();
     const int width = allocation.get_width();
     const int height = allocation.get_height();
-
     image_surface = Cairo::ImageSurface::create(Cairo::FORMAT_RGB24, width, height);
     Cairo::RefPtr<Cairo::Context> cr = Cairo::Context::create(image_surface);
 
     cr->save();
 
-    double logical_height = (height_per_loc*num_locs) + ((spacing_between_locs)*(num_locs-1.0));
-    double logical_width;
-         
-    if(zoom) {
-        logical_width = select_stop - select_start;
-    } else {
-        logical_width = trace_data->get_trace_length();
-    }
-
-    // Scale so right of selected area is offscreen
-    // logical select_stop == physical width
-    const double x_scale = (double)width/logical_width;
-    const double y_scale = (double)height/logical_height;
-    cr->scale(x_scale, y_scale);
-    // Move origin so left of selected area is offscreen
-    // logical select_start == 0
-    if(zoom) {
-        cr->translate(-select_start, 0.0);
-    }
-
+    set_scale(cr);
     cr->get_matrix(matrix);
     matrix.invert();
 
@@ -186,6 +195,29 @@ void TraceArea::draw_selection_rect(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->restore();
 }
 
+void TraceArea::draw_selected_task(const Cairo::RefPtr<Cairo::Context>& cr) {
+    cr->save();
+    std::cerr << "Draw selected task" << std::endl;
+    if(selected_event_start != nullptr && selected_event_end != nullptr) {
+        set_scale(cr);
+        const double top_of_row = (selected_loc*height_per_loc) + ((selected_loc-1.0)*spacing_between_locs)  + 10.0;
+        uint64_t global_offset = trace_data->get_global_offset();
+        const OTF2_TimeStamp enter = selected_event_start->get_time() - global_offset;      
+        const OTF2_TimeStamp leave = selected_event_end->get_time() - global_offset;   
+        const double rect_width = leave - enter;
+        cr->set_source_rgb(0.0, 1.0, 0.3);
+        double line_width = 4.0;
+        double unused = 0.0;
+        // convert desired line_width in pixels to user space
+        cr->device_to_user_distance(unused, line_width);
+        cr->set_line_width(line_width);
+        std::cerr << "Draw from " << enter << " to " << leave << std::endl;
+        cr->rectangle(enter, top_of_row, rect_width, height_per_loc);
+        cr->stroke();
+    }
+    cr->restore();
+}
+
 bool TraceArea::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
     if(trace_data == nullptr) {
         return false;
@@ -198,6 +230,9 @@ bool TraceArea::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->paint();
     if(selecting) {
         draw_selection_rect(cr);
+    }
+    if(selected_event_start != nullptr) {
+        draw_selected_task(cr);
     }
     cr->restore();
     return false;
@@ -214,11 +249,8 @@ bool TraceArea::display_popup_menu(GdkEventButton* button_event) {
     double y = button_event->y;
     matrix.transform_point(x, y);
     uint64_t loc = location_for_coord(y);
-    auto events = trace_data->get_task_at_time(loc, x + trace_data->get_global_offset());
-    std::string name;
-    if(events) {
-        name =  events->first.get_object().get_name();
-    } else {
+    std::string name = trace_data->get_task_name_at_time(loc, x + trace_data->get_global_offset());
+    if(name.empty()) {
         return false;
     }
     std::stringstream ss;
@@ -249,11 +281,14 @@ bool TraceArea::display_popup_menu(GdkEventButton* button_event) {
 }
 
 bool TraceArea::on_button_press_event(GdkEventButton* button_event) {
+    if(trace_data == nullptr) {
+        return false; // Not ready yet
+    }
     if(button_event->type == GDK_BUTTON_PRESS) {
         if(button_event->button == 1) { // left click = start zoom
+            selecting = true;
             select_start = button_event->x;
             select_stop = button_event->x;
-            selecting = true;
             queue_draw();
         } else if(button_event->button == 3) { // right click = popup menu
             return display_popup_menu(button_event);
@@ -263,28 +298,74 @@ bool TraceArea::on_button_press_event(GdkEventButton* button_event) {
 }
 
 bool TraceArea::on_button_release_event(GdkEventButton* button_event) {
-    if(button_event->type == GDK_BUTTON_RELEASE && button_event->button == 1) {
-        select_stop = button_event->x;
-        selecting = false;
-        if(select_start != select_stop) {
-            if(select_start > select_stop) {
-                std::swap(select_start, select_stop);
+    if(trace_data == nullptr) {
+        return false; // Not ready yet
+    }
+    if(button_event->type == GDK_BUTTON_RELEASE) {
+        if(button_event->button == 1) {
+            select_stop = button_event->x;
+            selecting = false;
+            if(select_start != select_stop) {
+                if(select_start > select_stop) {
+                    std::swap(select_start, select_stop);
+                }
+                double unused = 0.0; // transform_point needs a y coord
+                matrix.transform_point(select_start, unused);
+                matrix.transform_point(select_stop, unused);
+                zoom_start = select_start;
+                zoom_stop = select_stop;
+                zoom = true;
+                redraw();
+            } else {
+                // No dragging
+                select_event_under_cursor(button_event->x, button_event->y);
             }
-            double unused = 0.0; // transform_point needs a y coord
-            matrix.transform_point(select_start, unused);
-            matrix.transform_point(select_stop, unused);
-            zoom = true;
-            redraw();
+            queue_draw();
         }
-        queue_draw();
     }
     return false;
 }
 
 bool TraceArea::on_motion_notify_event(GdkEventMotion* motion_event) {
+    if(trace_data == nullptr) {
+        return false; // Not ready yet
+    }
     if(selecting) {
         select_stop = motion_event->x;
         queue_draw();
+    } else if (!should_update_label){
+        should_update_label = true;
+        sigc::slot<void> update_label_slot = sigc::bind(sigc::mem_fun(*this, &TraceArea::set_task_label_for_coord), motion_event->x, motion_event->y);
+        Glib::signal_timeout().connect_once(update_label_slot, 10);
     }
     return false;
+}
+
+
+void TraceArea::set_task_label_for_coord(double x, double y) {
+    if(should_update_label) {
+        matrix.transform_point(x, y);
+        uint64_t loc = location_for_coord(y);
+        std::string name = trace_data->get_task_name_at_time(loc, x + trace_data->get_global_offset(), true, true);
+        std::stringstream ss;
+        ss << loc << ": " << name;
+        main_window->set_task_label_text(ss.str());
+        should_update_label = false;
+    }
+}
+
+
+void TraceArea::select_event_under_cursor(double x, double y) {
+    matrix.transform_point(x, y);
+    uint64_t loc = location_for_coord(y);
+    auto tasks = trace_data->get_task_at_time(loc, x + trace_data->get_global_offset());
+    if(tasks) {
+        selected_event_start = &(tasks->first);
+        selected_event_end = &(tasks->second);
+        selected_loc = loc;
+    } else {
+        selected_event_start = nullptr;
+        selected_event_end = nullptr;
+        selected_loc = TraceData::INVALID_LOCATION_REF;
+    }
 }

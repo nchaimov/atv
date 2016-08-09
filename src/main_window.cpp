@@ -9,6 +9,7 @@
 #include <sstream>
 #include <gtkmm/main.h>
 #include <gtkmm/toolbar.h>
+#include <gtkmm/combobox.h>
 
 MainWindow::MainWindow(const std::string & filename, const TraceReader::locations_t & locations)
         : trace_area(this), filename(filename), locations(locations) {
@@ -29,6 +30,9 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    box.pack_start(load_progress, Gtk::PACK_SHRINK, 5);
    box.pack_start(sep, Gtk::PACK_SHRINK);
    box.pack_start(trace_area, Gtk::PACK_EXPAND_WIDGET);
+   if(bottom_bar != nullptr) {
+       box.pack_start(*bottom_bar, Gtk::PACK_SHRINK);
+   }
    load_progress.set_halign(Gtk::ALIGN_FILL);
    load_progress.set_valign(Gtk::ALIGN_CENTER);
    load_progress.set_show_text(true);
@@ -95,16 +99,91 @@ void MainWindow::setup_toolbar() {
         "        <property name='homogeneous'>True</property>"
         "      </packing>"
         "    </child>"
+        "    <child>"
+        "      <object class='GtkSeparatorToolItem' id='tool_sep'>"
+        "        <property name='draw'>False</property>"
+        "        <property name='visible'>True</property>"
+        "        <property name='can_focus'>False</property>"
+        "      </object>"
+        "      <packing>"
+        "        <property name='expand'>True</property>"
+        "        <property name='homogeneous'>False</property>"
+        "      </packing>"
+        "    </child>"
+        "    <child>"
+        "      <object class='GtkToolItem' id='toolbox_view'>"
+        "        <property name='visible'>True</property>"
+        "        <child>"
+        "          <object class='GtkComboBox' id='toolbox_combo'>"
+        "            <property name='visible'>True</property>"
+        "          </object>"
+        "        </child>"
+        "      </object>"
+        "      <packing>"
+        "        <property name='expand'>False</property>"
+        "        <property name='homogeneous'>False</property>"
+        "      </packing>"
+        "    </child>"
         "  </object>"
         "</interface>";
     builder->add_from_string(ui_info);
-    Gtk::Toolbar* toolbar = nullptr;
-    builder->get_widget("toolbar", toolbar);
-    if(toolbar == nullptr) {
+    builder->get_widget("toolbar", top_bar);
+    if(top_bar == nullptr) {
         std::cerr << "No toolbar found??" << std::endl;
-        return;
+        throw std::runtime_error("Unable to create toolbar");
     }         
-    box.pack_start(*toolbar, Gtk::PACK_SHRINK);   
+    Gtk::ComboBox * combobox = nullptr;
+    builder->get_widget("toolbox_combo", combobox);
+    if(combobox == nullptr) {
+        std::cerr << "No combo box found??" << std::endl;
+    }
+    else {
+        list_store = Gtk::ListStore::create(columns);
+        combobox->set_model(list_store);
+        Gtk::TreeModel::Row row = *(list_store->append());
+        row[columns.view_num]  = 1;
+        row[columns.view_name] = "Task Execution";
+        combobox->set_active(row);
+        combobox->pack_start(columns.view_name);
+        combobox->signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_view_changed));
+    }
+    box.pack_start(*top_bar, Gtk::PACK_SHRINK);   
+
+    // Bottom bar
+    const Glib::ustring bottom_bar_ui_info =
+        "<interface>"
+        "  <requires lib='gtk+' version='3.4'/>"
+        "  <object class='GtkToolbar' id='bottom_toolbar'>"
+        "    <property name='visible'>True</property>"
+        "    <property name='can_focus'>False</property>"
+        "    <child>"
+        "      <object class='GtkToolItem' id='label_holder'>"
+        "        <property name='visible'>True</property>"
+        "        <child>"
+        "          <object class='GtkLabel' id='task_label'>"
+        "            <property name='visible'>True</property>"
+        "            <property name='label'></property>"
+        "          </object>"
+        "        </child>"
+        "      </object>"
+        "      <packing>"
+        "        <property name='expand'>False</property>"
+        "        <property name='homogeneous'>False</property>"
+        "      </packing>"
+        "    </child>"
+        "  </object>"
+        "</interface>";
+    builder->add_from_string(bottom_bar_ui_info);
+    builder->get_widget("bottom_toolbar", bottom_bar);
+    if(bottom_bar == nullptr) {
+        std::cerr << "No toolbar found??" << std::endl;
+        throw std::runtime_error("Unable to create toolbar");
+    }         
+    builder->get_widget("task_label", task_label);
+    if(task_label == nullptr) {
+        std::cerr << "No task label found??" << std::endl;
+        throw std::runtime_error("Unable to create task label");
+    }
 }
 
 
@@ -152,3 +231,15 @@ bool MainWindow::on_configure_event(GdkEventConfigure* configure_event) {
     }
     return false;
 }
+
+void MainWindow::on_view_changed() {
+
+}
+
+void MainWindow::set_task_label_text(const Glib::ustring& str) {
+    if(task_label != nullptr) {
+        task_label->set_markup(str);
+    }
+}
+
+
