@@ -1,12 +1,18 @@
 #include "trace_area.hpp"
+#include "main_window.hpp"
 #include "colors.hpp"
 #include <iostream>
 #include <cmath>
+#include <sstream>
 
 #include <cairomm/context.h>
 #include <cairomm/surface.h>
 
-TraceArea::TraceArea() : num_locs(0), trace_data(nullptr) {
+#include <gtkmm/builder.h>
+#include <gtkmm/menu.h>
+#include <giomm/menu.h>
+
+TraceArea::TraceArea(MainWindow * main_window) : num_locs(0), trace_data(nullptr), main_window(main_window), menu(nullptr) {
     set_hexpand(true);
     set_vexpand(true);
     add_events(Gdk::BUTTON_MOTION_MASK | Gdk::BUTTON_PRESS_MASK | Gdk::BUTTON_RELEASE_MASK);
@@ -25,7 +31,43 @@ void TraceArea::unzoom() {
     zoom = false;
     select_start = 0.0;
     select_stop = trace_data->get_trace_length();
+    //main_window->lookup_action("win.unzoom")->set_sensitive(false);
+    //main_window->lookup_action("win.zoom_in")->set_sensitive(true);
+    //main_window->lookup_action("win.zoom_out")->set_sensitive(false);
     redraw();
+}
+
+void TraceArea::zoom_in() {
+    // Zoom in on center
+    const double center = (select_start + select_stop) / 2.0;
+    select_start = (select_start + center) / 2.0;
+    select_stop = (center + select_stop) / 2.0;
+    zoom = true;
+    redraw();
+}
+
+void TraceArea::zoom_out() {
+    if(zoom) {
+        const double center = (select_start + select_stop) / 2.0;
+        select_start = (2*select_start) - center;
+        select_stop  = (2*select_stop) - center;
+        if(select_start <= 0 || select_stop >= trace_data->get_trace_length()) {
+            unzoom();
+        } else {
+            redraw();
+        }
+    }
+}
+
+uint64_t TraceArea::location_for_coord(double y) const {
+    for(uint64_t loc = 0; loc < num_locs; ++loc) {
+        const double top_of_row = (loc*height_per_loc) + ((loc-1.0)*spacing_between_locs)  + 10.0;
+        const double bot_of_row = ((loc+1.0)*height_per_loc) + (loc*spacing_between_locs)  + 10.0;
+        if(y >= top_of_row && y <= bot_of_row) {
+            return loc;
+        }
+    }
+    return TraceData::INVALID_LOCATION_REF;
 }
 
 void TraceArea::draw_separators(const Cairo::RefPtr<Cairo::Context>& cr) {
@@ -59,6 +101,15 @@ void TraceArea::draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr) {
         const auto & events = trace_data->get_compute_events(loc);
         auto start_iterator = zoom ? trace_data->get_compute_event_at_time(loc, select_start+global_offset) : events.begin();
         auto stop_iterator = zoom ? trace_data->get_compute_event_at_time(loc, select_stop+global_offset) : events.end();
+        // We want to go one back and one forward so that we draw an event
+        // even if we are zoomed in so far that the start is before the
+        // zoom region and the end is after the zoom region
+        if(start_iterator != events.begin()) {
+            --start_iterator;
+        }    
+        if(stop_iterator != events.end()) {
+            ++stop_iterator;
+        }
         for(auto & it = start_iterator; it != stop_iterator; ++it) {
             const auto & event = *it;
             switch(event.get_event_type()) {
@@ -96,9 +147,7 @@ void TraceArea::draw_into_local_surface() {
     double logical_width;
          
     if(zoom) {
-        std::cerr << "Zoom requested between " << select_start << " and " << select_stop << std::endl;
         logical_width = select_stop - select_start;
-        std::cerr << "Width = " << logical_width << std::endl;
     } else {
         logical_width = trace_data->get_trace_length();
     }
@@ -157,34 +206,78 @@ bool TraceArea::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
 void TraceArea::on_new_data(uint64_t num_locs, TraceData * trace_data) {
     this->num_locs = num_locs;
     this->trace_data = trace_data;
-    this->select_start = 0.0;
-    this->select_stop = this->trace_data->get_trace_length();
-    queue_draw();
+    unzoom();
+}
+    
+bool TraceArea::display_popup_menu(GdkEventButton* button_event) {
+    double x = button_event->x;
+    double y = button_event->y;
+    matrix.transform_point(x, y);
+    uint64_t loc = location_for_coord(y);
+    auto events = trace_data->get_task_at_time(loc, x + trace_data->get_global_offset());
+    std::string name;
+    if(events) {
+        name =  events->first.get_object().get_name();
+    } else {
+        return false;
+    }
+    std::stringstream ss;
+    ss <<"<interface>"
+         "  <menu id='event-popup'>"
+         "    <section>"
+         "      <item>"
+         "        <attribute name='label' translatable='no'>" << name << "</attribute>"
+         "      </item>"
+         "    </section>"
+         "  </menu>"; 
+    Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create();
+    builder->add_from_string(ss.str());
+    Glib::RefPtr<Glib::Object> object = builder->get_object("event-popup");
+    Glib::RefPtr<Gio::Menu> gmenu = Glib::RefPtr<Gio::Menu>::cast_dynamic(object);
+    if(menu != nullptr) {
+        delete menu;
+    }
+    menu = new Gtk::Menu(gmenu);
+    auto items = menu->get_children();
+    Gtk::MenuItem * item = dynamic_cast<Gtk::MenuItem*>(items[0]);
+    if(item) {
+        item->set_sensitive(false);
+    }
+    menu->attach_to_widget(*this);
+    menu->popup(button_event->button, button_event->time);
+    return false;
 }
 
-
 bool TraceArea::on_button_press_event(GdkEventButton* button_event) {
-    select_start = button_event->x;
-    select_stop = button_event->x;
-    selecting = true;
-    queue_draw();
+    if(button_event->type == GDK_BUTTON_PRESS) {
+        if(button_event->button == 1) { // left click = start zoom
+            select_start = button_event->x;
+            select_stop = button_event->x;
+            selecting = true;
+            queue_draw();
+        } else if(button_event->button == 3) { // right click = popup menu
+            return display_popup_menu(button_event);
+        }
+    }
     return false;
 }
 
 bool TraceArea::on_button_release_event(GdkEventButton* button_event) {
-    select_stop = button_event->x;
-    selecting = false;
-    if(select_start != select_stop) {
-        if(select_start > select_stop) {
-            std::swap(select_start, select_stop);
+    if(button_event->type == GDK_BUTTON_RELEASE && button_event->button == 1) {
+        select_stop = button_event->x;
+        selecting = false;
+        if(select_start != select_stop) {
+            if(select_start > select_stop) {
+                std::swap(select_start, select_stop);
+            }
+            double unused = 0.0; // transform_point needs a y coord
+            matrix.transform_point(select_start, unused);
+            matrix.transform_point(select_stop, unused);
+            zoom = true;
+            redraw();
         }
-        double unused = 0.0; // transform_point needs a y coord
-        matrix.transform_point(select_start, unused);
-        matrix.transform_point(select_stop, unused);
-        zoom = true;
-        redraw();
+        queue_draw();
     }
-    queue_draw();
     return false;
 }
 

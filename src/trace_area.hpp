@@ -6,6 +6,7 @@
 #include <sigc++/sigc++.h>
 #include <cairomm/surface.h>
 #include <cairomm/matrix.h>
+#include <gtkmm/menu.h>
 
 #include "trace_data.hpp"
 
@@ -14,7 +15,7 @@ class MainWindow;
 class TraceArea : public Gtk::DrawingArea {
 public:
     friend class MainWindow;
-    TraceArea();
+    TraceArea(MainWindow * main_window);
     virtual ~TraceArea();
 
     uint64_t num_locs;
@@ -22,10 +23,15 @@ public:
 
     void redraw();
     void unzoom();
+    void zoom_in();
+    void zoom_out();
 
 protected:
     static constexpr double height_per_loc = 100.0;
     static constexpr double spacing_between_locs = 10.0;
+
+    MainWindow * main_window;
+    Gtk::Menu * menu;
 
     Cairo::RefPtr<Cairo::ImageSurface> image_surface;
 
@@ -39,6 +45,9 @@ protected:
     void draw_separators(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_selection_rect(const Cairo::RefPtr<Cairo::Context>& cr);
+    uint64_t location_for_coord(double y) const;
+   
+    bool display_popup_menu(GdkEventButton* button_event);  
 
     virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
     virtual bool on_button_press_event(GdkEventButton* button_event) override;

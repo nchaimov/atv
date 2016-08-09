@@ -1,6 +1,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <iterator>
 #include <otf2/otf2.h>
 #include "trace_data.hpp"
 
@@ -267,20 +268,38 @@ int TraceData::get_seq_id(const std::string & name) {
         return itr->second;    
     } else {
         const int new_id = next_seq_id++;
-        std::cerr << "New id: " << new_id << " for " << name << std::endl;
         name_map[name] = new_id;
         return new_id;
     }
 }
 
 TraceData::event_list_t::const_iterator TraceData::get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time) {
-    struct timestamp_compare {
-        bool operator()(const TraceData::Event & left, const TraceData::Event & right) {
-            return left.get_time() < right.get_time();
-        };
-    };
     TraceData::Event target(this, loc_ref, TraceData::EventType::Artificial, time, 0, INVALID_REGION_REF, INVALID_REGION_REF, INVALID_SIZE, 0);
     const auto & vect = compute_events_map[loc_ref];
     return std::lower_bound(vect.begin(), vect.end(), target, timestamp_compare());
+}
+
+
+
+TraceData::maybe_event_pair_t TraceData::get_task_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time) {
+    auto it = get_compute_event_at_time(loc_ref, time);
+    TraceData::event_list_t::const_iterator enter_it;
+    TraceData::event_list_t::const_iterator leave_it;
+    if(it->get_event_type() == TraceData::EventType::Enter) {
+        enter_it = it;
+        leave_it = std::next(it, 1);
+    } else if(it->get_event_type() == TraceData::EventType::Leave) {
+        enter_it = std::prev(it, 1);
+        leave_it = it;
+    } else {
+        std::cerr << "Invalid event type in get_task_at_time" << std::endl;
+        return boost::none;
+    }
+    // Make sure that the event is active during the time
+    if(enter_it->get_time() > time || leave_it->get_time() < time) {
+        std::cerr << "Outside bounds." << std::endl;
+        return boost::none;
+    } 
+    return event_pair_t(*enter_it, *leave_it);
 }
 

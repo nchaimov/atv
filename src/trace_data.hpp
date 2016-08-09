@@ -6,6 +6,8 @@
 #include <map>
 #include <vector>
 #include <limits>
+#include <boost/optional.hpp>
+#include <utility>
 
 class TraceData {
 public:
@@ -252,6 +254,13 @@ public:
 
 
 protected:
+
+    struct timestamp_compare {
+        bool operator()(const TraceData::Event & left, const TraceData::Event & right) {
+            return left.get_time() < right.get_time();
+        };
+    };
+
     OTF2_LocationRef cur_loc;
 
     using string_map_t  = std::unordered_map<OTF2_StringRef, std::string>;
@@ -290,6 +299,8 @@ protected:
     using name_map_t = std::map<std::string, int>;
     name_map_t name_map;
 
+    using event_pair_t = std::pair<const Event&, const Event&>;
+    using maybe_event_pair_t = const boost::optional<const event_pair_t>;
 
 public:
 
@@ -332,6 +343,7 @@ public:
     const event_list_t & get_compute_events(const OTF2_LocationRef loc_ref);
     const event_list_t & get_other_events(const OTF2_LocationRef loc_ref);
     event_list_t::const_iterator get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);
+    maybe_event_pair_t get_task_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);   
 
     void put_clock_properties(uint64_t timer_resolution, uint64_t global_offset, uint64_t trace_length) {
         this->timer_resolution = timer_resolution;

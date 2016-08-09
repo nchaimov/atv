@@ -11,7 +11,7 @@
 #include <gtkmm/toolbar.h>
 
 MainWindow::MainWindow(const std::string & filename, const TraceReader::locations_t & locations)
-        : filename(filename), locations(locations) {
+        : trace_area(this), filename(filename), locations(locations) {
    set_title("APEX Trace Viewer");
    set_border_width(10);
    set_default_size(800,600);
@@ -47,6 +47,8 @@ MainWindow::~MainWindow() {
 void MainWindow::setup_toolbar() {
     builder = Gtk::Builder::create();
     add_action("unzoom", sigc::mem_fun(trace_area, &TraceArea::unzoom));
+    add_action("zoom_in", sigc::mem_fun(trace_area, &TraceArea::zoom_in));
+    add_action("zoom_out", sigc::mem_fun(trace_area, &TraceArea::zoom_out));
     const Glib::ustring ui_info =
         "<!-- Generated with glade 3.18.3 -->"
         "<interface>"
@@ -85,7 +87,7 @@ void MainWindow::setup_toolbar() {
         "        <property name='visible'>True</property>"
         "        <property name='can_focus'>False</property>"
         "        <property name='tooltip_text' translatable='yes'>Zoom Out</property>"
-        "        <property name='action_name'>wout.zoom_out</property>"
+        "        <property name='action_name'>win.zoom_out</property>"
         "        <property name='icon_name'>zoom-out</property>"
         "      </object>"
         "      <packing>"
