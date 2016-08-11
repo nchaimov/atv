@@ -1,5 +1,6 @@
 
 #include "ATV_EvtReaderCallbacks.h"
+#include <iostream>
 #include "trace_data.hpp"
 
 #ifdef __cplusplus
@@ -48,6 +49,7 @@ OTF2_CallbackCode ATV_EvtReaderCallback_Enter ( OTF2_LocationRef  locationID,
 OTF2_RegionRef region ) {
     TraceData * trace_data = static_cast<TraceData *>(userData);                       
     trace_data->put_event(locationID, TraceData::EventType::Enter, time, event_position, region, TraceData::INVALID_REGION_REF, TraceData::INVALID_SIZE);
+    trace_data->set_last_entered(locationID, region);
     return OTF2_CALLBACK_SUCCESS;
 }
 
@@ -59,6 +61,7 @@ OTF2_CallbackCode ATV_EvtReaderCallback_Leave ( OTF2_LocationRef  locationID,
     OTF2_AttributeList* attributeList,
 OTF2_RegionRef region ) {
     TraceData * trace_data = static_cast<TraceData *>(userData);                       
+    trace_data->set_last_entered(locationID, TraceData::INVALID_REGION_REF);
     trace_data->put_event(locationID, TraceData::EventType::Leave, time, event_position, region, TraceData::INVALID_REGION_REF, TraceData::INVALID_SIZE);
     return OTF2_CALLBACK_SUCCESS;
 }

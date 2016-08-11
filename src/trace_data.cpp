@@ -153,6 +153,8 @@ const TraceData::LocationGroup & TraceData::Location::get_parent() const {
 
 void TraceData::put_location(const OTF2_LocationRef loc_ref, const OTF2_StringRef name, const OTF2_LocationType type, const uint64_t num_events, const OTF2_LocationGroupRef parent) {
     location_map.emplace(std::piecewise_construct, std::forward_as_tuple(loc_ref), std::forward_as_tuple(this, loc_ref, name, type, num_events, parent));
+    compute_events_map[loc_ref].reserve(num_events);
+    other_events_map[loc_ref].reserve(num_events);
 }
 
 const TraceData::Location & TraceData::get_location(const OTF2_LocationRef loc_ref) {
@@ -247,15 +249,28 @@ const TraceData::Region & TraceData::Event::get_subject() const {
     return *subject_region;
 }
 
+const TraceData::Region & TraceData::Event::get_parent() const {
+    if(parent_region == nullptr) {
+        const Region & parent_from_map = trace_data->get_region(loc, parent);
+        parent_region = &parent_from_map;
+    }
+    return *parent_region;
+}
+
+
 void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size) {
+    put_event(loc_ref, event_type, time, event_position, object, subject, get_last_entered(loc_ref), size);
+}
+
+void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const OTF2_RegionRef parent, const uint64_t size) {
     Event * event;
     if(event_type == EventType::Enter || event_type == EventType::Leave) {
         auto & vect = compute_events_map[loc_ref];
-        vect.emplace_back(this, loc_ref, event_type, time, event_position, object, subject, size, get_seq_id(get_region(loc_ref, object).get_name())); 
+        vect.emplace_back(this, loc_ref, event_type, time, event_position, object, subject, parent, size, get_seq_id(get_region(loc_ref, object).get_name())); 
         event = &(vect.back());
     } else {
         auto & vect = other_events_map[loc_ref];
-        vect.emplace_back(this, loc_ref, event_type, time, event_position, object, subject, size, -1); 
+        vect.emplace_back(this, loc_ref, event_type, time, event_position, object, subject, parent, size, -1); 
         event = &(vect.back());
     }
 
@@ -264,9 +279,14 @@ void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_
         guid_map[object_guid].emplace_back(event);
     }
 
-    if(subject != INVALID_REGION_REF) {
+    if(subject != INVALID_REGION_REF && object != subject) {
         const std::string & subject_guid = event->get_subject().get_guid();
         guid_map[subject_guid].emplace_back(event);
+    }
+
+    if(parent != INVALID_REGION_REF && parent != object && parent != subject) {
+        const std::string & parent_guid = event->get_parent().get_guid();
+        guid_map[parent_guid].emplace_back(event); 
     }
 }
 
@@ -290,7 +310,7 @@ int TraceData::get_seq_id(const std::string & name) {
 }
 
 TraceData::event_list_t::const_iterator TraceData::get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time) {
-    TraceData::Event target(this, loc_ref, TraceData::EventType::Artificial, time, 0, INVALID_REGION_REF, INVALID_REGION_REF, INVALID_SIZE, 0);
+    TraceData::Event target(this, loc_ref, TraceData::EventType::Artificial, time, 0, INVALID_REGION_REF, INVALID_REGION_REF, INVALID_REGION_REF, INVALID_SIZE, 0);
     const auto & vect = compute_events_map[loc_ref];
     return std::lower_bound(vect.begin(), vect.end(), target, timestamp_compare());
 }
@@ -338,5 +358,19 @@ std::string TraceData::get_task_name_at_time(const OTF2_LocationRef loc_ref, con
 
 TraceData::event_ptr_list_t & TraceData::get_events_for_guid(const std::string & guid) {
     return guid_map[guid];
+}
+
+
+
+OTF2_RegionRef TraceData::get_last_entered(OTF2_LocationRef loc_ref) {
+    const auto itr = last_entered_map.find(loc_ref);
+    if(itr != last_entered_map.end()) {
+        return itr->second;
+    }
+    return TraceData::INVALID_REGION_REF;
+}
+
+void TraceData::set_last_entered(OTF2_LocationRef loc_ref, OTF2_RegionRef region) {
+    last_entered_map[loc_ref] = region;
 }
 

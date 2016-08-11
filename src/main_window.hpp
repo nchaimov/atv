@@ -12,6 +12,7 @@
 #include <gtkmm/treemodelcolumn.h>
 #include <gtkmm/toolbar.h>
 #include <gtkmm/label.h>
+#include <gtkmm/combobox.h>
 
 #include "status.hpp"
 #include "trace_reader.hpp"
@@ -39,6 +40,7 @@ protected:
     Gtk::Toolbar * top_bar;
     Gtk::Toolbar * bottom_bar;
     Gtk::Label * task_label;
+    Gtk::ComboBox * combobox;
 
     new_data_signal_t new_data_signal;
 

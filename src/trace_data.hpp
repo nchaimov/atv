@@ -8,6 +8,8 @@
 #include <limits>
 #include <boost/optional.hpp>
 #include <utility>
+#include <sstream>
+#include <iomanip>
 
 class TraceData {
 public:
@@ -172,6 +174,22 @@ public:
         const std::string & get_name() const;
         const std::string & get_guid() const;
         const std::string & get_desc() const;
+
+        std::string to_string() const {
+            std::stringstream ss;
+            ss << "(";
+            if(get_self() != INVALID_REGION_REF) {
+                ss << get_self() << " ";
+                if(get_name_ref() != INVALID_STRING_REF) {
+                    ss << get_name() << " ";
+                }
+                if(get_guid_ref() != INVALID_STRING_REF) {
+                    ss << get_guid();
+                }               
+            }
+            ss << ")";
+            return ss.str();
+        }
             
     };
 
@@ -204,11 +222,13 @@ public:
         uint64_t event_position;
         const OTF2_RegionRef object;
         const OTF2_RegionRef subject;
+        const OTF2_RegionRef parent;
         const uint64_t size;
 
 
         mutable Region const * object_region;
         mutable Region const * subject_region;
+        mutable Region const * parent_region;
         const int seq_entry_id;
 
         public:
@@ -224,6 +244,7 @@ public:
                 uint64_t event_position,
                 const OTF2_RegionRef object,
                 const OTF2_RegionRef subject,
+                const OTF2_RegionRef parent,
                 const uint64_t size,
                 const int seq_entry_id)
           : trace_data(trace_data),
@@ -233,32 +254,74 @@ public:
             event_position(event_position),
             object(object),
             subject(subject),
+            parent(parent),
             size(size),
             object_region(nullptr),
             subject_region(nullptr),
+            parent_region(nullptr),
             seq_entry_id(seq_entry_id) {};
 
         OTF2_LocationRef get_loc() const { return loc; };
         EventType get_event_type() const { return event_type; };
+        std::string get_event_type_str() const {
+            switch(get_event_type()) {
+                case EventType::MeasurementOn:       return "MeasurementOn";
+                case EventType::MeasurementOff:      return "MeasurementOff";
+                case EventType::Enter:               return "Enter";
+                case EventType::Leave:               return "Leave";
+                case EventType::TaskCreate:          return "TaskCreate";
+                case EventType::TaskDestroy:         return "TaskDestroy";
+                case EventType::TaskRunnable:        return "TaskRunnable";
+                case EventType::AddDependence:       return "AddDependence";
+                case EventType::SatisfyDependence:   return "SatisfyDependence";
+                case EventType::DataAcquire:         return "DataAcquire";
+                case EventType::DataRelease:         return "DataRelease";
+                case EventType::EventCreate:         return "EventCreate";
+                case EventType::EventDestroy:        return "EventDestroy";
+                case EventType::DataCreate:          return "DataCreate";
+                case EventType::DataDestroy:         return "DataDestroy";
+                case EventType::Artificial:          return "Artificial";
+                case EventType::Unknown:             return "Unknown";
+            }
+            return "Invalid event type";
+        };
         OTF2_TimeStamp get_time() const { return time; };
         double get_seconds() const { return (double)get_time() / (double)trace_data->get_timer_resolution(); };
         uint64_t get_event_position() const { return event_position; };
         OTF2_RegionRef get_object_ref() const { return object; };
         OTF2_RegionRef get_subject_ref() const { return subject; };
+        OTF2_RegionRef get_parent_ref() const { return parent; };
         uint64_t get_size() const { return size; };
         int get_seq_entry_id() const { return seq_entry_id; };
 
         const Region & get_object() const;
         const Region & get_subject() const;
+        const Region & get_parent() const;
+
+        std::string to_string() const {
+            std::stringstream ss;
+            ss << std::setw(5) << get_loc() << " ";
+            ss << std::setw(10) << get_time() << " ";
+            ss << std::left << std::setw(18) << get_event_type_str() << " ";
+            ss << std::left << std::setw(35) << get_object().to_string() << " ";
+            ss << std::left << std::setw(35) << get_subject().to_string() << " ";
+            return ss.str();
+        }
             
     };
 
 
-protected:
+public:
 
     struct timestamp_compare {
         bool operator()(const TraceData::Event & left, const TraceData::Event & right) {
             return left.get_time() < right.get_time();
+        };
+    };
+
+    struct timestamp_ptr_compare {
+        bool operator()(const TraceData::Event * left, const TraceData::Event * right) {
+            return left->get_time() < right->get_time();
         };
     };
 
@@ -307,6 +370,8 @@ protected:
     using guid_map_t = std::unordered_map<std::string,event_ptr_list_t>;
     guid_map_t guid_map;
 
+    std::map<OTF2_LocationRef, OTF2_RegionRef> last_entered_map;
+
 public:
 
     static constexpr OTF2_LocationRef INVALID_LOCATION_REF = std::numeric_limits<OTF2_LocationRef>::max();
@@ -344,6 +409,7 @@ public:
     const Region & get_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef region_ref);
     const regions_map_t & get_regions() const;
 
+    void put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const OTF2_RegionRef parent, const uint64_t size);
     void put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size);
     const event_list_t & get_compute_events(const OTF2_LocationRef loc_ref);
     const event_list_t & get_other_events(const OTF2_LocationRef loc_ref);
@@ -364,6 +430,9 @@ public:
     uint64_t get_trace_length() const { return trace_length; };
 
     int get_seq_id(const std::string &  name);
+
+    OTF2_RegionRef get_last_entered(OTF2_LocationRef loc_ref);
+    void set_last_entered(OTF2_LocationRef loc_ref, OTF2_RegionRef region);
 };
 
 #endif // TRACE_DATA_HPP

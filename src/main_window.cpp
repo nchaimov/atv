@@ -132,7 +132,7 @@ void MainWindow::setup_toolbar() {
         std::cerr << "No toolbar found??" << std::endl;
         throw std::runtime_error("Unable to create toolbar");
     }         
-    Gtk::ComboBox * combobox = nullptr;
+    combobox = nullptr;
     builder->get_widget("toolbox_combo", combobox);
     if(combobox == nullptr) {
         std::cerr << "No combo box found??" << std::endl;
@@ -143,6 +143,9 @@ void MainWindow::setup_toolbar() {
         Gtk::TreeModel::Row row = *(list_store->append());
         row[columns.view_num]  = 1;
         row[columns.view_name] = "Task Execution";
+        Gtk::TreeModel::Row row2 = *(list_store->append());
+        row2[columns.view_num]  = 2;
+        row2[columns.view_name] = "Concurrency";
         combobox->set_active(row);
         combobox->pack_start(columns.view_name);
         combobox->signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_view_changed));
@@ -233,7 +236,20 @@ bool MainWindow::on_configure_event(GdkEventConfigure* configure_event) {
 }
 
 void MainWindow::on_view_changed() {
-
+    if(combobox != nullptr)  {
+        Gtk::TreeModel::iterator iter = combobox->get_active();
+        if(iter) {
+            Gtk::TreeModel::Row row = *iter;
+            if(row) {
+                int id = row[columns.view_num];
+                switch(id) {
+                    case 1: trace_area.set_mode(TraceArea::Mode::TaskExecution); break;
+                    case 2: trace_area.set_mode(TraceArea::Mode::Concurrency); break;
+                    default: std::cerr << "Invalid mode" << std::endl;
+                }
+            }
+        }
+    }
 }
 
 void MainWindow::set_task_label_text(const Glib::ustring& str) {

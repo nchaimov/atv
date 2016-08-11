@@ -27,6 +27,13 @@ public:
     void zoom_in();
     void zoom_out();
 
+    enum class Mode {
+        TaskExecution,
+        Concurrency
+    };
+
+    void set_mode(Mode mode);
+
 protected:
     static constexpr double height_per_loc = 100.0;
     static constexpr double spacing_between_locs = 10.0;
@@ -47,13 +54,16 @@ protected:
     uint64_t selected_loc = TraceData::INVALID_LOCATION_REF;
     const TraceData::Event * selected_event_start = nullptr;
     const TraceData::Event * selected_event_end = nullptr;
+    Mode mode = Mode::TaskExecution;
         
     void draw_into_local_surface();
     void set_scale(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_separators(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr);
+    void draw_concurrency(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_selection_rect(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_selected_task(const Cairo::RefPtr<Cairo::Context>& cr);
+    void draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Context>&cr);
     uint64_t location_for_coord(double y) const;
    
     bool display_popup_menu(GdkEventButton* button_event);  
