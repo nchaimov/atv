@@ -100,7 +100,7 @@ void TraceArea::draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr) {
     for(uint64_t loc = 0; loc < num_locs; ++loc) {
         uint64_t last_enter = 0;
         const double top_of_row = (loc*height_per_loc) + ((loc-1.0)*spacing_between_locs)  + 10.0;
-        const auto & events = trace_data->get_compute_events(loc);
+        const auto & events = trace_data->get_events(loc);
         auto start_iterator = zoom ? trace_data->get_compute_event_at_time(loc, zoom_start+global_offset) : events.begin();
         auto stop_iterator = zoom ? trace_data->get_compute_event_at_time(loc, zoom_stop+global_offset) : events.end();
         // We want to go one back and one forward so that we draw an event

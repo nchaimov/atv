@@ -184,7 +184,9 @@ public:
                     ss << get_name() << " ";
                 }
                 if(get_guid_ref() != INVALID_STRING_REF) {
-                    ss << get_guid();
+                    std::string guid = get_guid();
+                    std::string type = TraceData::guid_type_to_str(trace_data->get_type_for_guid(guid));
+                    ss << type << " " << guid;
                 }               
             }
             ss << ")";
@@ -303,11 +305,28 @@ public:
             ss << std::setw(5) << get_loc() << " ";
             ss << std::setw(10) << get_time() << " ";
             ss << std::left << std::setw(18) << get_event_type_str() << " ";
-            ss << std::left << std::setw(35) << get_object().to_string() << " ";
-            ss << std::left << std::setw(35) << get_subject().to_string() << " ";
+            ss << std::left << std::setw(45) << get_object().to_string() << " ";
+            ss << std::left << std::setw(45) << get_subject().to_string() << " ";
             return ss.str();
         }
             
+    };
+
+    enum class GuidType {
+        Task,
+        Event,
+        Datablock,
+        Unknown
+    };
+
+    static std::string guid_type_to_str(GuidType gt) {
+        switch(gt) {
+            case GuidType::Task:      return "Task";
+            case GuidType::Event:     return "Event";
+            case GuidType::Datablock: return "Datablock";
+            case GuidType::Unknown:   return "Unknown";
+        }
+        return "Invalid GUID Type";
     };
 
 
@@ -352,8 +371,7 @@ public:
 
     using event_list_t = std::vector<Event>;
     using events_map_t = std::map<OTF2_LocationRef, event_list_t>;
-    events_map_t other_events_map;
-    events_map_t compute_events_map;
+    events_map_t events_map;
 
     uint64_t timer_resolution;
     uint64_t global_offset;
@@ -369,6 +387,9 @@ public:
     using event_ptr_list_t = std::vector<const Event *>;
     using guid_map_t = std::unordered_map<std::string,event_ptr_list_t>;
     guid_map_t guid_map;
+
+    using guid_type_map_t = std::unordered_map<std::string,GuidType>;
+    guid_type_map_t guid_type_map;
 
     std::map<OTF2_LocationRef, OTF2_RegionRef> last_entered_map;
 
@@ -411,14 +432,14 @@ public:
 
     void put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const OTF2_RegionRef parent, const uint64_t size);
     void put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size);
-    const event_list_t & get_compute_events(const OTF2_LocationRef loc_ref);
-    const event_list_t & get_other_events(const OTF2_LocationRef loc_ref);
+    const event_list_t & get_events(const OTF2_LocationRef loc_ref);
     event_list_t::const_iterator get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);
     maybe_event_pair_t get_task_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);   
     std::string get_task_name_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, bool also_guid=false, bool markup=false);
 
     event_ptr_list_t & get_events_for_guid(const std::string & guid);
-
+    TraceData::GuidType get_type_for_guid(const std::string & guid);
+    
     void put_clock_properties(uint64_t timer_resolution, uint64_t global_offset, uint64_t trace_length) {
         this->timer_resolution = timer_resolution;
         this->global_offset = global_offset;

@@ -153,8 +153,7 @@ const TraceData::LocationGroup & TraceData::Location::get_parent() const {
 
 void TraceData::put_location(const OTF2_LocationRef loc_ref, const OTF2_StringRef name, const OTF2_LocationType type, const uint64_t num_events, const OTF2_LocationGroupRef parent) {
     location_map.emplace(std::piecewise_construct, std::forward_as_tuple(loc_ref), std::forward_as_tuple(this, loc_ref, name, type, num_events, parent));
-    compute_events_map[loc_ref].reserve(num_events);
-    other_events_map[loc_ref].reserve(num_events);
+    events_map[loc_ref].reserve(num_events);
 }
 
 const TraceData::Location & TraceData::get_location(const OTF2_LocationRef loc_ref) {
@@ -264,19 +263,30 @@ void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_
 
 void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const OTF2_RegionRef parent, const uint64_t size) {
     Event * event;
-    if(event_type == EventType::Enter || event_type == EventType::Leave) {
-        auto & vect = compute_events_map[loc_ref];
-        vect.emplace_back(this, loc_ref, event_type, time, event_position, object, subject, parent, size, get_seq_id(get_region(loc_ref, object).get_name())); 
-        event = &(vect.back());
-    } else {
-        auto & vect = other_events_map[loc_ref];
-        vect.emplace_back(this, loc_ref, event_type, time, event_position, object, subject, parent, size, -1); 
-        event = &(vect.back());
+    auto & vect = events_map[loc_ref];
+    int seq_id = -1;
+    if(event_type == TraceData::EventType::Enter || event_type == TraceData::EventType::Leave) {
+        seq_id = get_seq_id(get_region(loc_ref, object).get_name());
     }
+    vect.emplace_back(this, loc_ref, event_type, time, event_position, object, subject, parent, size, seq_id); 
+    event = &(vect.back());
+
 
     if(object != INVALID_REGION_REF) {
         const std::string & object_guid = event->get_object().get_guid();
         guid_map[object_guid].emplace_back(event);
+        switch(event_type) {
+            case TraceData::EventType::TaskCreate:
+                guid_type_map[object_guid] = TraceData::GuidType::Task;
+                break;
+            case TraceData::EventType::EventCreate:
+                guid_type_map[object_guid] = TraceData::GuidType::Event;
+                break;
+            case TraceData::EventType::DataCreate:
+                guid_type_map[object_guid] = TraceData::GuidType::Datablock;
+            default:
+                break;
+        }
     }
 
     if(subject != INVALID_REGION_REF && object != subject) {
@@ -290,12 +300,8 @@ void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_
     }
 }
 
-const TraceData::event_list_t & TraceData::get_compute_events(const OTF2_LocationRef loc_ref) {
-    return compute_events_map[loc_ref];
-}
-
-const TraceData::event_list_t & TraceData::get_other_events(const OTF2_LocationRef loc_ref) {
-    return other_events_map[loc_ref];
+const TraceData::event_list_t & TraceData::get_events(const OTF2_LocationRef loc_ref) {
+    return events_map[loc_ref];
 }
 
 int TraceData::get_seq_id(const std::string & name) {
@@ -311,8 +317,22 @@ int TraceData::get_seq_id(const std::string & name) {
 
 TraceData::event_list_t::const_iterator TraceData::get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time) {
     TraceData::Event target(this, loc_ref, TraceData::EventType::Artificial, time, 0, INVALID_REGION_REF, INVALID_REGION_REF, INVALID_REGION_REF, INVALID_SIZE, 0);
-    const auto & vect = compute_events_map[loc_ref];
-    return std::lower_bound(vect.begin(), vect.end(), target, timestamp_compare());
+    const auto & vect = events_map[loc_ref];
+    TraceData::event_list_t::const_iterator iter = std::lower_bound(vect.begin(), vect.end(), target, timestamp_compare());
+    auto begin = vect.begin();
+    while(iter != begin) {
+        switch(iter->get_event_type()) {
+            case TraceData::EventType::Enter:
+            case TraceData::EventType::Leave:
+                return iter;
+                break;
+            default:
+                break;
+        }
+        iter = std::prev(iter, 1);
+    }
+    return iter;
+
 }
 
 
@@ -324,8 +344,14 @@ TraceData::maybe_event_pair_t TraceData::get_task_at_time(const OTF2_LocationRef
     if(it->get_event_type() == TraceData::EventType::Enter) {
         enter_it = it;
         leave_it = std::next(it, 1);
+        while(leave_it->get_event_type() != TraceData::EventType::Leave) {
+            leave_it = std::next(leave_it, 1);
+        }
     } else if(it->get_event_type() == TraceData::EventType::Leave) {
         enter_it = std::prev(it, 1);
+        while(enter_it->get_event_type() != TraceData::EventType::Enter) {
+            enter_it = std::prev(enter_it, 1);
+        }
         leave_it = it;
     } else {
         std::cerr << "Invalid event type in get_task_at_time" << std::endl;
@@ -360,7 +386,14 @@ TraceData::event_ptr_list_t & TraceData::get_events_for_guid(const std::string &
     return guid_map[guid];
 }
 
-
+TraceData::GuidType TraceData::get_type_for_guid(const std::string & guid) {
+    auto iter = guid_type_map.find(guid);
+    if(iter != guid_type_map.end()) {
+        return iter->second;
+    } else {
+        return TraceData::GuidType::Unknown;
+    }
+}
 
 OTF2_RegionRef TraceData::get_last_entered(OTF2_LocationRef loc_ref) {
     const auto itr = last_entered_map.find(loc_ref);
