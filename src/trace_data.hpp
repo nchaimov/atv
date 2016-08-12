@@ -386,7 +386,7 @@ public:
 
     using event_ptr_list_t = std::vector<const Event *>;
     using guid_map_t = std::unordered_map<std::string,event_ptr_list_t>;
-    guid_map_t guid_map;
+    mutable guid_map_t guid_map;
 
     using guid_type_map_t = std::unordered_map<std::string,GuidType>;
     guid_type_map_t guid_type_map;
@@ -437,7 +437,7 @@ public:
     maybe_event_pair_t get_task_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);   
     std::string get_task_name_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, bool also_guid=false, bool markup=false);
 
-    event_ptr_list_t & get_events_for_guid(const std::string & guid);
+    const event_ptr_list_t & get_events_for_guid(const std::string & guid) const;
     TraceData::GuidType get_type_for_guid(const std::string & guid);
     
     void put_clock_properties(uint64_t timer_resolution, uint64_t global_offset, uint64_t trace_length) {

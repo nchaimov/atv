@@ -19,8 +19,9 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    last_width=800;
    last_height=600;
    
-   add_events( Gdk::BUTTON_PRESS_MASK | Gdk::BUTTON_RELEASE_MASK );
+   add_events( Gdk::BUTTON_PRESS_MASK | Gdk::BUTTON_RELEASE_MASK | Gdk::PROPERTY_CHANGE_MASK);
    signal_map_event().connect(sigc::mem_fun(*this, &MainWindow::setup_load_traces));
+   new_data_event().connect(sigc::mem_fun(related_list, &RelatedList::on_new_data));
    new_data_event().connect(sigc::mem_fun(trace_area, &TraceArea::on_new_data));
 
    add(box);
@@ -29,7 +30,22 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    setup_toolbar();
    box.pack_start(load_progress, Gtk::PACK_SHRINK, 5);
    box.pack_start(sep, Gtk::PACK_SHRINK);
-   box.pack_start(trace_area, Gtk::PACK_EXPAND_WIDGET);
+   
+   trace_area.set_vexpand(true);
+   trace_area.set_hexpand(true);
+   trace_area.set_size_request(440, -1);
+   related_list.set_size_request(160, -1);
+   related_list.set_vexpand(true);
+   related_list.set_hexpand(true);
+   scroll.add(related_list);
+   scroll.set_size_request(160, -1);
+   pane.pack1(trace_area, false, false);
+   pane.pack2(scroll,false, false );
+   pane.set_vexpand(true);
+   pane.set_hexpand(true);
+
+   box.pack_start(pane, Gtk::PACK_EXPAND_WIDGET);
+   
    if(bottom_bar != nullptr) {
        box.pack_start(*bottom_bar, Gtk::PACK_SHRINK);
    }
@@ -40,6 +56,9 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    load_progress.show();
    sep.show();
    trace_area.show();
+   related_list.show();
+   scroll.show();
+   pane.show();
    box.show();
 }
 
@@ -258,4 +277,7 @@ void MainWindow::set_task_label_text(const Glib::ustring& str) {
     }
 }
 
+void MainWindow::set_selected_event(const TraceData::Event * event) {
+    related_list.set_selected_task(event);
+}
 

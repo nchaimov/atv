@@ -106,11 +106,14 @@ void TraceArea::draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr) {
         // We want to go one back and one forward so that we draw an event
         // even if we are zoomed in so far that the start is before the
         // zoom region and the end is after the zoom region
-        if(start_iterator != events.begin()) {
-            --start_iterator;
+        while(start_iterator != events.begin() && start_iterator->get_event_type() != TraceData::EventType::Enter) {
+            start_iterator = std::prev(start_iterator, 1);
         }    
+        while(stop_iterator != events.end() && stop_iterator->get_event_type() != TraceData::EventType::Leave) {
+            stop_iterator = std::next(stop_iterator, 1);
+        }
         if(stop_iterator != events.end()) {
-            ++stop_iterator;
+            stop_iterator = std::next(stop_iterator, 1);
         }
         for(auto & it = start_iterator; it != stop_iterator; ++it) {
             const auto & event = *it;
@@ -122,7 +125,8 @@ void TraceArea::draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr) {
                 case TraceData::EventType::Leave: {
                     const uint64_t this_end = event.get_time() - global_offset;
                     const double rect_width = this_end - last_enter;
-                    Colors::set_color(cr, event.get_seq_entry_id());
+                    int seq_id = event.get_seq_entry_id();
+                    Colors::set_color(cr, seq_id);
                     cr->rectangle(last_enter, top_of_row, rect_width, height_per_loc);
                     cr->fill();
                 };
@@ -477,10 +481,12 @@ bool TraceArea::on_button_release_event(GdkEventButton* button_event) {
                 double unused = 0.0; // transform_point needs a y coord
                 matrix.transform_point(select_start, unused);
                 matrix.transform_point(select_stop, unused);
-                zoom_start = select_start;
-                zoom_stop = select_stop;
-                zoom = true;
-                redraw();
+                if((double)select_start / (double)select_stop < 0.9999) {
+                    zoom_start = select_start;
+                    zoom_stop = select_stop;
+                    zoom = true;
+                    redraw();
+                }
             } else {
                 // No dragging
                 select_event_under_cursor(button_event->x, button_event->y);
@@ -529,6 +535,7 @@ void TraceArea::select_event_under_cursor(double x, double y) {
         auto tasks = trace_data->get_task_at_time(loc, x + trace_data->get_global_offset());
         if(tasks) {
             selected_event_start = &(tasks->first);
+            main_window->set_selected_event(selected_event_start);
             selected_event_end = &(tasks->second);
             selected_loc = loc;
         } else {

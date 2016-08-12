@@ -382,7 +382,7 @@ std::string TraceData::get_task_name_at_time(const OTF2_LocationRef loc_ref, con
     return ss.str();
 }
 
-TraceData::event_ptr_list_t & TraceData::get_events_for_guid(const std::string & guid) {
+const TraceData::event_ptr_list_t & TraceData::get_events_for_guid(const std::string & guid) const {
     return guid_map[guid];
 }
 

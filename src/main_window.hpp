@@ -13,12 +13,15 @@
 #include <gtkmm/toolbar.h>
 #include <gtkmm/label.h>
 #include <gtkmm/combobox.h>
+#include <gtkmm/paned.h>
+#include <gtkmm/scrolledwindow.h>
 
 #include "status.hpp"
 #include "trace_reader.hpp"
 #include "trace_data.hpp"
 #include "callbacks.hpp"
 #include "trace_area.hpp"
+#include "related_list.hpp"
 
 
 class MainWindow : public Gtk::ApplicationWindow {
@@ -29,13 +32,17 @@ public:
     using new_data_signal_t = sigc::signal<void, uint64_t, TraceData*>;
     new_data_signal_t new_data_event() const;
 
-    void set_task_label_text(const Glib::ustring& str);
+    virtual void set_task_label_text(const Glib::ustring& str);
+    virtual void set_selected_event(const TraceData::Event * event);
 
 protected:
     Gtk::VBox box;
+    Gtk::Paned pane;
+    Gtk::ScrolledWindow scroll;
     Gtk::Separator sep;
     Gtk::ProgressBar load_progress;
     TraceArea trace_area;
+    RelatedList related_list;
     Glib::RefPtr<Gtk::Builder> builder;
     Gtk::Toolbar * top_bar;
     Gtk::Toolbar * bottom_bar;
@@ -58,6 +65,7 @@ protected:
 
     virtual bool on_configure_event(GdkEventConfigure* configure_event) override;
     virtual void on_view_changed();
+
 
     class ViewsComboBoxModel : public Gtk::TreeModelColumnRecord {
     public:
