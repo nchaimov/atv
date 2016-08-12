@@ -354,7 +354,6 @@ TraceData::maybe_event_pair_t TraceData::get_task_at_time(const OTF2_LocationRef
         }
         leave_it = it;
     } else {
-        std::cerr << "Invalid event type in get_task_at_time" << std::endl;
         return boost::none;
     }
     // Make sure that the event is active during the time

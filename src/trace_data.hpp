@@ -227,7 +227,6 @@ public:
         const OTF2_RegionRef parent;
         const uint64_t size;
 
-
         mutable Region const * object_region;
         mutable Region const * subject_region;
         mutable Region const * parent_region;

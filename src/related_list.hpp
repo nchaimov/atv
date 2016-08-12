@@ -14,10 +14,11 @@ class RelatedList : public Gtk::TreeView {
     class ModelColumns : public Gtk::TreeModel::ColumnRecord {
         public:
         ModelColumns()
-        { add(col_id); add(col_name); }
+        { add(col_id); add(col_name); add(col_prop); };
 
         Gtk::TreeModelColumn<int> col_id;
         Gtk::TreeModelColumn<Glib::ustring> col_name;
+        Gtk::TreeModelColumn<Glib::ustring> col_prop;
     };
 
     ModelColumns columns;
@@ -25,7 +26,9 @@ class RelatedList : public Gtk::TreeView {
     const TraceData * trace_data;
 
     void update_model();
-        
+
+    bool select_function(const Glib::RefPtr<Gtk::TreeModel>& model, const Gtk::TreeModel::Path& path, bool path_currently_selected);
+    void on_selection_changed();
 
     public:
     RelatedList();

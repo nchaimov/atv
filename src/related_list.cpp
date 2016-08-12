@@ -1,10 +1,17 @@
 #include <set>
+#include <iostream>
 #include <sstream>
+#include <gtkmm/treeselection.h>
 #include "related_list.hpp"
 
 RelatedList::RelatedList() : Gtk::TreeView() {
-    append_column("Name", columns.col_name);
+    append_column("GUID", columns.col_name);
+    append_column("Property", columns.col_prop);
     show_all_children();
+    Glib::RefPtr<Gtk::TreeSelection> tree_selection = get_selection();
+    tree_selection->set_select_function(sigc::mem_fun(*this, &RelatedList::select_function));
+    tree_selection->signal_changed().connect(sigc::mem_fun(*this, &RelatedList::on_selection_changed));
+
 }
 
 RelatedList::~RelatedList() {
@@ -62,9 +69,10 @@ void RelatedList::update_model() {
                             block_acquires_seen.insert(db_guid);
                             Gtk::TreeModel::Row acquire_row = *(tree_store->append(data_acquired_row.children()));
                             acquire_row[columns.col_id] = next_id++;
+                            acquire_row[columns.col_name] = db_guid;
                             std::stringstream ss;
-                            ss << db_guid << " size: " << event_ptr->get_size();
-                            acquire_row[columns.col_name] = ss.str();
+                            ss << event_ptr->get_size();
+                            acquire_row[columns.col_prop] = ss.str();
                         }
                     }
                     break;
@@ -75,9 +83,10 @@ void RelatedList::update_model() {
                             block_creates_seen.insert(db_guid);
                             Gtk::TreeModel::Row create_row = *(tree_store->append(data_created_row.children()));
                             create_row[columns.col_id] = next_id++;
+                            create_row[columns.col_name] = db_guid;
                             std::stringstream ss;
-                            ss << db_guid << " size: " << event_ptr->get_size();
-                            create_row[columns.col_name] = ss.str();
+                            ss << event_ptr->get_size();
+                            create_row[columns.col_prop] = ss.str();
                         }
                     }
                     break;
@@ -88,41 +97,40 @@ void RelatedList::update_model() {
                             block_destroys_seen.insert(db_guid);
                             Gtk::TreeModel::Row destroy_row = *(tree_store->append(data_destroyed_row.children()));
                             destroy_row[columns.col_id] = next_id++;
+                            destroy_row[columns.col_name] = db_guid;
                             std::stringstream ss;
-                            ss << db_guid << " size: " << event_ptr->get_size();
-                            destroy_row[columns.col_name] = ss.str();
+                            ss << event_ptr->get_size();
+                            destroy_row[columns.col_prop] = ss.str();
                         }
                     }
                     break;
 
                     case TraceData::EventType::TaskCreate: {
                         std::string task_guid = event_ptr->get_object().get_guid();
-                        if(event_ptr->get_parent().get_guid() != task_guid) {
+                        if(event_ptr->get_parent().get_guid() != guid) {
                             break;
                         }
                         if(task_creates_seen.count(task_guid) == 0) {
                             task_creates_seen.insert(task_guid);
                             Gtk::TreeModel::Row create_row = *(tree_store->append(tasks_created_row.children()));
                             create_row[columns.col_id] = next_id++;
-                            std::stringstream ss;
-                            ss << task_guid << " " << event_ptr->get_object().get_name();
-                            create_row[columns.col_name] = ss.str();
+                            create_row[columns.col_name] = task_guid;
+                            create_row[columns.col_prop] = event_ptr->get_object().get_name();
                         }
                     }
                     break;
 
                     case TraceData::EventType::TaskDestroy: {
                         std::string task_guid = event_ptr->get_object().get_guid();
-                        if(event_ptr->get_parent().get_guid() != task_guid) {
+                        if(event_ptr->get_parent().get_guid() != guid) {
                             break;
                         }
                         if(task_destroys_seen.count(task_guid) == 0) {
                             task_destroys_seen.insert(task_guid);
                             Gtk::TreeModel::Row destroy_row = *(tree_store->append(tasks_destroyed_row.children()));
                             destroy_row[columns.col_id] = next_id++;
-                            std::stringstream ss;
-                            ss << task_guid << " " << event_ptr->get_object().get_name();
-                            destroy_row[columns.col_name] = ss.str();
+                            destroy_row[columns.col_name] = task_guid;
+                            destroy_row[columns.col_prop] = event_ptr->get_object().get_name();
                         }
                     }
                     break;
@@ -170,4 +178,23 @@ void RelatedList::on_new_data(uint64_t num_locs, TraceData * trace_data) {
     (void)num_locs; //unused
     this->trace_data = trace_data;
     update_model();
+}
+
+
+bool RelatedList::select_function(const Glib::RefPtr<Gtk::TreeModel>& model, const Gtk::TreeModel::Path& path, bool path_currently_selected) {
+    const Gtk::TreeModel::iterator iter = model->get_iter(path);
+    Gtk::TreeModel::Row row = *iter;
+    if(row[columns.col_id] < 8) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
+void RelatedList::on_selection_changed() {
+    Gtk::TreeModel::iterator iter = get_selection()->get_selected();
+    if(iter) {
+        Gtk::TreeModel::Row row = *iter;
+        std::cerr << "Selected: " << row[columns.col_name] << std::endl;
+    }
 }
