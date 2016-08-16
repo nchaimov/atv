@@ -12,7 +12,7 @@
 #include <gtkmm/combobox.h>
 
 MainWindow::MainWindow(const std::string & filename, const TraceReader::locations_t & locations)
-        : trace_area(this), filename(filename), locations(locations) {
+        : trace_area(this), filename(filename), locations(locations), redraw_on_scroll(true) {
    set_title("APEX Trace Viewer");
    set_border_width(10);
    set_default_size(800,600);
@@ -23,6 +23,9 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    signal_map_event().connect(sigc::mem_fun(*this, &MainWindow::setup_load_traces));
    new_data_event().connect(sigc::mem_fun(related_list, &RelatedList::on_new_data));
    new_data_event().connect(sigc::mem_fun(trace_area, &TraceArea::on_new_data));
+   new_data_event().connect(sigc::mem_fun(*this, &MainWindow::on_new_data));
+   pane.property_position().signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_pane_resize));
+   scrollbar.get_adjustment()->signal_value_changed().connect(sigc::mem_fun(*this, &MainWindow::on_scroll_value_changed));
 
    add(box);
    box.set_hexpand(true);
@@ -39,7 +42,13 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    related_list.set_hexpand(true);
    scroll.add(related_list);
    scroll.set_size_request(160, -1);
-   pane.pack1(trace_area, false, false);
+   trace_box.set_homogeneous(false);
+   trace_box.pack_start(trace_area, Gtk::PACK_EXPAND_WIDGET);
+   trace_box.set_vexpand(false);
+   trace_box.set_hexpand(false);
+   scrollbar.set_slider_size_fixed(false);
+   trace_box.pack_start(scrollbar, Gtk::PACK_SHRINK);
+   pane.pack1(trace_box, false, false);
    pane.pack2(scroll,false, false );
    pane.set_vexpand(true);
    pane.set_hexpand(true);
@@ -56,6 +65,8 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    load_progress.show();
    sep.show();
    trace_area.show();
+   scrollbar.show();
+   trace_box.show();
    related_list.show();
    scroll.show();
    pane.show();
@@ -281,3 +292,41 @@ void MainWindow::set_selected_event(const TraceData::Event * event) {
     related_list.set_selected_task(event);
 }
 
+
+void MainWindow::on_pane_resize() {
+    trace_area.redraw();
+}
+
+void MainWindow::set_scroll_range(const double min, const double max) {
+    Glib::RefPtr<Gtk::Adjustment> adj = scrollbar.get_adjustment();
+    adj->set_lower(min);
+    adj->set_upper(max);
+}
+
+void MainWindow::set_scroll_page_size(const double page_size) {
+    Glib::RefPtr<Gtk::Adjustment> adj = scrollbar.get_adjustment();
+    adj->set_page_size(page_size);
+    adj->set_page_increment(page_size/4.0);
+}
+
+void MainWindow::set_scroll_position(const double position, const bool should_redraw) {
+    redraw_on_scroll = should_redraw;
+    Glib::RefPtr<Gtk::Adjustment> adj = scrollbar.get_adjustment();
+    adj->set_value(position);
+}
+
+void MainWindow::on_new_data(uint64_t num_locs, TraceData * trace_data) {
+    const double length = (double)trace_data->get_trace_length();
+    set_scroll_range(0.0, length);
+    set_scroll_page_size(length);
+    set_scroll_position(length / 2.0);
+}
+
+void MainWindow::on_scroll_value_changed() {
+    if(redraw_on_scroll) {
+        Glib::RefPtr<Gtk::Adjustment> adj = scrollbar.get_adjustment();
+        trace_area.set_position(adj->get_value());
+    } else {
+        redraw_on_scroll = true;
+    }
+}

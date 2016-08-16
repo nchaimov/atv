@@ -4,7 +4,7 @@
 #include <gtkmm/treeselection.h>
 #include "related_list.hpp"
 
-RelatedList::RelatedList() : Gtk::TreeView() {
+RelatedList::RelatedList() : Gtk::TreeView(), selected_event(nullptr) {
     append_column("GUID", columns.col_name);
     append_column("Property", columns.col_prop);
     show_all_children();
@@ -92,15 +92,13 @@ void RelatedList::update_model() {
                     break;
 
                     case TraceData::EventType::DataDestroy: {
-                        std::string db_guid = event_ptr->get_subject().get_guid();
+                        std::string db_guid = event_ptr->get_object().get_guid();
                         if(block_destroys_seen.count(db_guid) == 0) {
                             block_destroys_seen.insert(db_guid);
                             Gtk::TreeModel::Row destroy_row = *(tree_store->append(data_destroyed_row.children()));
                             destroy_row[columns.col_id] = next_id++;
                             destroy_row[columns.col_name] = db_guid;
-                            std::stringstream ss;
-                            ss << event_ptr->get_size();
-                            destroy_row[columns.col_prop] = ss.str();
+                            destroy_row[columns.col_prop] = "";
                         }
                     }
                     break;
@@ -177,6 +175,7 @@ void RelatedList::set_selected_task(const TraceData::Event * event) {
 void RelatedList::on_new_data(uint64_t num_locs, TraceData * trace_data) {
     (void)num_locs; //unused
     this->trace_data = trace_data;
+    selected_event = nullptr;
     update_model();
 }
 
@@ -195,6 +194,14 @@ void RelatedList::on_selection_changed() {
     Gtk::TreeModel::iterator iter = get_selection()->get_selected();
     if(iter) {
         Gtk::TreeModel::Row row = *iter;
-        std::cerr << "Selected: " << row[columns.col_name] << std::endl;
+        Glib::ustring name = row[columns.col_name];
+        std::string guid = name.raw();
+        TraceData::event_ptr_list_t related_events(trace_data->get_events_for_guid(guid));
+        std::sort(related_events.begin(), related_events.end(), TraceData::timestamp_ptr_compare());
+        std::cerr << std::endl;
+        for(const auto event_ptr : related_events) {
+            std::cerr << event_ptr->to_string() << std::endl;
+        }
     }
+
 }

@@ -15,7 +15,7 @@ set(GUI_FILES main_window.cpp trace_area.cpp related_list.cpp)
 add_library(atv_gui OBJECT ${GUI_FILES})
 
 add_executable (atv main.cpp $<TARGET_OBJECTS:callbacks> $<TARGET_OBJECTS:trace_reader> $<TARGET_OBJECTS:atv_gui>)
-target_link_libraries(atv PUBLIC ${LIBS})
+target_link_libraries(atv ${LIBS})
 
 
 INSTALL(TARGETS atv

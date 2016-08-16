@@ -24,8 +24,14 @@ TraceArea::~TraceArea() {
 
 }
 
-void TraceArea::redraw() {
+void TraceArea::redraw(const bool should_scroll) {
     image_surface.clear();
+    if(should_scroll) {
+        const double page_size = zoom_stop - zoom_start;
+        const double position = page_size / 2.0;
+        main_window->set_scroll_page_size(page_size);
+        main_window->set_scroll_position(position, false);
+    }
     queue_resize();
 }
 
@@ -33,9 +39,6 @@ void TraceArea::unzoom() {
     zoom = false;
     zoom_start = 0.0;
     zoom_stop = trace_data->get_trace_length();
-    //main_window->lookup_action("win.unzoom")->set_sensitive(false);
-    //main_window->lookup_action("win.zoom_in")->set_sensitive(true);
-    //main_window->lookup_action("win.zoom_out")->set_sensitive(false);
     redraw();
 }
 
@@ -547,11 +550,22 @@ void TraceArea::select_event_under_cursor(double x, double y) {
 }
 
 
-    void TraceArea::set_mode(TraceArea::Mode mode) { 
-        if(this->mode != mode) {
-            this->mode = mode;
-            unzoom();
-            main_window->set_task_label_text("");
-        }
+void TraceArea::set_mode(TraceArea::Mode mode) { 
+    if(this->mode != mode) {
+        this->mode = mode;
+        unzoom();
+        main_window->set_task_label_text("");
     }
+}
 
+
+void TraceArea::set_position(const double position) {
+    if(!zoom) {
+        return;
+    }
+    const double page_size = zoom_stop - zoom_start;    
+    const double offset = page_size / 2.0;
+    zoom_start = position - offset;
+    zoom_stop  = position + offset;
+    redraw(false);
+}

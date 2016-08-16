@@ -110,6 +110,7 @@ if(OTF2_TEMPLATE)
 else()
     message(FATAL_ERROR " could not find otf2-template; please add it to your PATH")
 endif()
+
     
 find_package(PkgConfig REQUIRED)
 # Use the package PkgConfig to detect GTKmm headers/library files
@@ -132,6 +133,18 @@ link_directories(${CAIROMM_LIBRARY_DIRS})
 # Add other flags to the compiler
 add_definitions(${CAIROMM_CFLAGS_OTHER})
 set(LIBS ${LIBS} ${CAIROMM_LIBRARIES})
+
+if(USE_JEMALLOC)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JEMALLOC REQUIRED jemalloc)
+# Setup CMake to use GTK+, tell the compiler where to look for headers
+# and to the linker where to look for libraries
+include_directories(${JEMALLOC_INCLUDE_DIRS})
+link_directories(${JEMALLOC_LIBRARY_DIRS})
+# Add other flags to the compiler
+add_definitions(${JEMALLOC_CFLAGS_OTHER})
+set(LIBS ${LIBS} ${JEMALLOC_LIBRARIES})
+endif()
 
 add_subdirectory(templates)
 add_subdirectory(src)

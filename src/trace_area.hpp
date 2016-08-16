@@ -22,10 +22,11 @@ public:
     uint64_t num_locs;
     TraceData * trace_data;
 
-    void redraw();
+    void redraw(const bool should_scroll = true);
     void unzoom();
     void zoom_in();
     void zoom_out();
+    void set_position(const double position);
 
     enum class Mode {
         TaskExecution,

@@ -14,6 +14,7 @@
 #include <gtkmm/label.h>
 #include <gtkmm/combobox.h>
 #include <gtkmm/paned.h>
+#include <gtkmm/scrollbar.h>
 #include <gtkmm/scrolledwindow.h>
 
 #include "status.hpp"
@@ -34,9 +35,13 @@ public:
 
     virtual void set_task_label_text(const Glib::ustring& str);
     virtual void set_selected_event(const TraceData::Event * event);
+    virtual void set_scroll_range(const double min, const double max);
+    virtual void set_scroll_page_size(const double page_size);
+    virtual void set_scroll_position(const double position, const bool should_redraw = true);
 
 protected:
     Gtk::VBox box;
+    Gtk::VBox trace_box;
     Gtk::Paned pane;
     Gtk::ScrolledWindow scroll;
     Gtk::Separator sep;
@@ -48,6 +53,7 @@ protected:
     Gtk::Toolbar * bottom_bar;
     Gtk::Label * task_label;
     Gtk::ComboBox * combobox;
+    Gtk::Scrollbar scrollbar;
 
     new_data_signal_t new_data_signal;
 
@@ -57,6 +63,7 @@ protected:
 
     int last_width;
     int last_height;
+    bool redraw_on_scroll;
 
     virtual bool setup_load_traces(GdkEventAny * event);
     virtual void setup_toolbar();
@@ -65,6 +72,9 @@ protected:
 
     virtual bool on_configure_event(GdkEventConfigure* configure_event) override;
     virtual void on_view_changed();
+    virtual void on_new_data(uint64_t num_locs, TraceData * trace_data);
+    virtual void on_pane_resize();
+    virtual void on_scroll_value_changed();
 
 
     class ViewsComboBoxModel : public Gtk::TreeModelColumnRecord {
