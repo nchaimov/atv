@@ -24,11 +24,32 @@ TraceArea::~TraceArea() {
 
 }
 
+void TraceArea::set_create_color(const Cairo::RefPtr<Cairo::Context>& cr) {
+    cr->set_source_rgba(1.0, 0.0, 0.0, 1.0);
+}
+
+void TraceArea::set_outgoing_color(const Cairo::RefPtr<Cairo::Context>& cr) {
+    cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
+}
+
+void TraceArea::set_incoming_color(const Cairo::RefPtr<Cairo::Context>& cr) {
+    cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
+}
+
+void TraceArea::set_runnable_color(const Cairo::RefPtr<Cairo::Context>& cr) {
+    cr->set_source_rgba(0.0, 0.0, 1.0, 1.0);
+}
+
+void TraceArea::set_satisfy_color(const Cairo::RefPtr<Cairo::Context>& cr) {
+    cr->set_source_rgba(0.5, 0.3, 0.9, 1.0);
+}
+
 void TraceArea::redraw(const bool should_scroll) {
     image_surface.clear();
     if(should_scroll) {
+        main_window->set_scroll_allowed(zoom);
         const double page_size = zoom_stop - zoom_start;
-        const double position = page_size / 2.0;
+        const double position = (zoom_start + zoom_stop) / 2.0;
         main_window->set_scroll_page_size(page_size);
         main_window->set_scroll_position(position, false);
     }
@@ -325,6 +346,7 @@ void TraceArea::draw_selected_task(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->restore();
 }
 
+
 void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Context>&cr) {
     if(selected_event_start == nullptr) {
         return;
@@ -339,27 +361,27 @@ void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Conte
         cr->save();
         switch(event_ptr->get_event_type()) {
             case TraceData::EventType::TaskCreate: {
-                cr->set_source_rgba(1.0, 0.0, 0.0, 1.0);
+                set_create_color(cr);
                 draw = true;
             };
             break;
             case TraceData::EventType::AddDependence: {
                 if(event_ptr->get_object().get_guid() != selected_event_start->get_object().get_guid()) {
                     // Outgoing dependency
-                    cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
+                    set_outgoing_color(cr);
                 } else {
-                    cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
+                    set_incoming_color(cr);
                 }
                 draw = true;
             };
             break;
             case TraceData::EventType::TaskRunnable: {
-                cr->set_source_rgba(0.0, 0.0, 1.0, 1.0);
+                set_runnable_color(cr);
                 draw = true;
             };
             break;
             case TraceData::EventType::SatisfyDependence: {
-                cr->set_source_rgba(0.5, 0.3, 0.9, 1.0);
+                set_satisfy_color(cr);
                 draw = true;
             };
             break;

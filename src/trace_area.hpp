@@ -56,7 +56,13 @@ protected:
     const TraceData::Event * selected_event_start = nullptr;
     const TraceData::Event * selected_event_end = nullptr;
     Mode mode = Mode::TaskExecution;
-        
+
+    inline void set_create_color(const Cairo::RefPtr<Cairo::Context>& cr);
+    inline void set_outgoing_color(const Cairo::RefPtr<Cairo::Context>& cr);
+    inline void set_incoming_color(const Cairo::RefPtr<Cairo::Context>& cr);
+    inline void set_runnable_color(const Cairo::RefPtr<Cairo::Context>& cr);
+    inline void set_satisfy_color(const Cairo::RefPtr<Cairo::Context>& cr);
+
     void draw_into_local_surface();
     void set_scale(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_separators(const Cairo::RefPtr<Cairo::Context>& cr);
@@ -65,7 +71,7 @@ protected:
     void draw_selection_rect(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_selected_task(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Context>&cr);
-    uint64_t location_for_coord(double y) const;
+    inline uint64_t location_for_coord(double y) const;
    
     bool display_popup_menu(GdkEventButton* button_event);  
     void select_event_under_cursor(double x, double y);

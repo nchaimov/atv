@@ -298,15 +298,18 @@ void MainWindow::on_pane_resize() {
 }
 
 void MainWindow::set_scroll_range(const double min, const double max) {
+    max_time = max;
     Glib::RefPtr<Gtk::Adjustment> adj = scrollbar.get_adjustment();
     adj->set_lower(min);
     adj->set_upper(max);
 }
 
 void MainWindow::set_scroll_page_size(const double page_size) {
+    scrollbar.set_increments(page_size / 4.0, page_size);
     Glib::RefPtr<Gtk::Adjustment> adj = scrollbar.get_adjustment();
     adj->set_page_size(page_size);
     adj->set_page_increment(page_size/4.0);
+    adj->set_upper(max_time + page_size);
 }
 
 void MainWindow::set_scroll_position(const double position, const bool should_redraw) {
@@ -329,4 +332,8 @@ void MainWindow::on_scroll_value_changed() {
     } else {
         redraw_on_scroll = true;
     }
+}
+
+void MainWindow::set_scroll_allowed(const bool allowed) {
+    scrollbar.set_sensitive(allowed);
 }

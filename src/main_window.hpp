@@ -38,6 +38,7 @@ public:
     virtual void set_scroll_range(const double min, const double max);
     virtual void set_scroll_page_size(const double page_size);
     virtual void set_scroll_position(const double position, const bool should_redraw = true);
+    virtual void set_scroll_allowed(const bool allowed);
 
 protected:
     Gtk::VBox box;
@@ -64,6 +65,7 @@ protected:
     int last_width;
     int last_height;
     bool redraw_on_scroll;
+    double max_time;
 
     virtual bool setup_load_traces(GdkEventAny * event);
     virtual void setup_toolbar();
