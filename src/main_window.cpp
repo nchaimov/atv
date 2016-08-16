@@ -12,7 +12,8 @@
 #include <gtkmm/combobox.h>
 
 MainWindow::MainWindow(const std::string & filename, const TraceReader::locations_t & locations)
-        : trace_area(this), filename(filename), locations(locations), redraw_on_scroll(true) {
+        : trace_area(this), related_list(this), filename(filename),
+          locations(locations), redraw_on_scroll(true) {
    set_title("APEX Trace Viewer");
    set_border_width(10);
    set_default_size(800,600);
@@ -337,3 +338,8 @@ void MainWindow::on_scroll_value_changed() {
 void MainWindow::set_scroll_allowed(const bool allowed) {
     scrollbar.set_sensitive(allowed);
 }
+
+void MainWindow::set_selected_related_guid(const std::string & guid) {
+    trace_area.set_selected_related_guid(guid);
+}
+

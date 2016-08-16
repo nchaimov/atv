@@ -27,6 +27,7 @@ public:
     void zoom_in();
     void zoom_out();
     void set_position(const double position);
+    void set_selected_related_guid(const std::string & guid);
 
     enum class Mode {
         TaskExecution,
@@ -55,11 +56,15 @@ protected:
     uint64_t selected_loc = TraceData::INVALID_LOCATION_REF;
     const TraceData::Event * selected_event_start = nullptr;
     const TraceData::Event * selected_event_end = nullptr;
+    std::string selected_related_guid;
     Mode mode = Mode::TaskExecution;
 
     inline void set_create_color(const Cairo::RefPtr<Cairo::Context>& cr);
+    inline void set_destroy_color(const Cairo::RefPtr<Cairo::Context>& cr);
     inline void set_outgoing_color(const Cairo::RefPtr<Cairo::Context>& cr);
     inline void set_incoming_color(const Cairo::RefPtr<Cairo::Context>& cr);
+    inline void set_acquire_color(const Cairo::RefPtr<Cairo::Context>& cr);
+    inline void set_release_color(const Cairo::RefPtr<Cairo::Context>& cr);
     inline void set_runnable_color(const Cairo::RefPtr<Cairo::Context>& cr);
     inline void set_satisfy_color(const Cairo::RefPtr<Cairo::Context>& cr);
 
@@ -71,6 +76,8 @@ protected:
     void draw_selection_rect(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_selected_task(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Context>&cr);
+    void draw_selected_guid_events(const Cairo::RefPtr<Cairo::Context>&cr);
+
     inline uint64_t location_for_coord(double y) const;
    
     bool display_popup_menu(GdkEventButton* button_event);  

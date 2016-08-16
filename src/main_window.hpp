@@ -33,12 +33,13 @@ public:
     using new_data_signal_t = sigc::signal<void, uint64_t, TraceData*>;
     new_data_signal_t new_data_event() const;
 
-    virtual void set_task_label_text(const Glib::ustring& str);
-    virtual void set_selected_event(const TraceData::Event * event);
-    virtual void set_scroll_range(const double min, const double max);
-    virtual void set_scroll_page_size(const double page_size);
-    virtual void set_scroll_position(const double position, const bool should_redraw = true);
-    virtual void set_scroll_allowed(const bool allowed);
+    void set_task_label_text(const Glib::ustring& str);
+    void set_selected_event(const TraceData::Event * event);
+    void set_scroll_range(const double min, const double max);
+    void set_scroll_page_size(const double page_size);
+    void set_scroll_position(const double position, const bool should_redraw = true);
+    void set_scroll_allowed(const bool allowed);
+    void set_selected_related_guid(const std::string & guid);
 
 protected:
     Gtk::VBox box;
@@ -67,16 +68,16 @@ protected:
     bool redraw_on_scroll;
     double max_time;
 
-    virtual bool setup_load_traces(GdkEventAny * event);
-    virtual void setup_toolbar();
-    virtual void load_traces();
-    virtual void update_status(uint64_t num_locs);
+    bool setup_load_traces(GdkEventAny * event);
+    void setup_toolbar();
+    void load_traces();
+    void update_status(uint64_t num_locs);
 
-    virtual bool on_configure_event(GdkEventConfigure* configure_event) override;
-    virtual void on_view_changed();
-    virtual void on_new_data(uint64_t num_locs, TraceData * trace_data);
-    virtual void on_pane_resize();
-    virtual void on_scroll_value_changed();
+    bool on_configure_event(GdkEventConfigure* configure_event) override;
+    void on_view_changed();
+    void on_new_data(uint64_t num_locs, TraceData * trace_data);
+    void on_pane_resize();
+    void on_scroll_value_changed();
 
 
     class ViewsComboBoxModel : public Gtk::TreeModelColumnRecord {

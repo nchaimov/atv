@@ -28,12 +28,24 @@ void TraceArea::set_create_color(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->set_source_rgba(1.0, 0.0, 0.0, 1.0);
 }
 
+void TraceArea::set_destroy_color(const Cairo::RefPtr<Cairo::Context>& cr) {
+    cr->set_source_rgb(0.8, 0.8, 0.2);
+}
+
 void TraceArea::set_outgoing_color(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
 }
 
 void TraceArea::set_incoming_color(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
+}
+
+void TraceArea::set_acquire_color(const Cairo::RefPtr<Cairo::Context>& cr) {
+    cr->set_source_rgba(0.4, 1.0, 0.0, 1.0);
+}
+
+void TraceArea::set_release_color(const Cairo::RefPtr<Cairo::Context>& cr) {
+    cr->set_source_rgba(1.0, 0.0, 1.0, 1.0);
 }
 
 void TraceArea::set_runnable_color(const Cairo::RefPtr<Cairo::Context>& cr) {
@@ -207,6 +219,9 @@ void TraceArea::draw_into_local_surface() {
     if(mode == Mode::TaskExecution) {
         draw_separators(cr);
         draw_tasks(cr);
+        if(!selected_related_guid.empty()) {
+            draw_selected_guid_events(cr);
+        }
     } else if(mode == Mode::Concurrency) {
         draw_concurrency(cr);
     }
@@ -324,7 +339,7 @@ void TraceArea::draw_selected_task(const Cairo::RefPtr<Cairo::Context>& cr) {
         const OTF2_TimeStamp enter = selected_event_start->get_time() - global_offset;      
         const OTF2_TimeStamp leave = selected_event_end->get_time() - global_offset;   
         const double rect_width = leave - enter;
-        cr->set_source_rgba(0.0, 1.0, 0.3, 0.2);
+        cr->set_source_rgba(1.0, 1.0, 1.0, 0.3);
         cr->rectangle(enter, top_of_row, rect_width, height_per_loc);
         cr->fill();
         cr->set_source_rgb(0.0, 1.0, 0.3);
@@ -354,9 +369,7 @@ void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Conte
     const std::string guid = selected_event_start->get_object().get_guid();
     TraceData::event_ptr_list_t related_events(trace_data->get_events_for_guid(guid));
     std::sort(related_events.begin(), related_events.end(), TraceData::timestamp_ptr_compare());
-    std::cerr << std::endl;
     for(const auto event_ptr : related_events) {
-        std::cerr << event_ptr->to_string() << std::endl ;
         bool draw = false;
         cr->save();
         switch(event_ptr->get_event_type()) {
@@ -408,6 +421,85 @@ void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Conte
         }
         cr->restore();
     }
+}
+
+void TraceArea::draw_selected_guid_events(const Cairo::RefPtr<Cairo::Context>&cr) {
+    cr->save();
+    TraceData::event_ptr_list_t related_events(trace_data->get_events_for_guid(selected_related_guid));
+    std::sort(related_events.begin(), related_events.end(), TraceData::timestamp_ptr_compare());
+    for(const auto event_ptr : related_events) {
+        const uint64_t global_offset = trace_data->get_global_offset();
+        const double evt_time = event_ptr->get_time() - global_offset;
+        if(evt_time < zoom_start || evt_time > zoom_stop) {
+            continue;
+        }
+        bool draw = false;
+        cr->save();
+        switch(event_ptr->get_event_type()) {
+            case TraceData::EventType::TaskCreate:
+            case TraceData::EventType::EventCreate:
+            case TraceData::EventType::DataCreate: {
+                set_create_color(cr);
+                draw = true;
+            };
+            break;
+
+            case TraceData::EventType::TaskDestroy:
+            case TraceData::EventType::EventDestroy:
+            case TraceData::EventType::DataDestroy: {
+                set_destroy_color(cr);
+                draw = true;
+            };
+            break;
+
+            case TraceData::EventType::DataAcquire: {
+                set_acquire_color(cr);
+                draw = true;
+            };
+            break;
+
+            case TraceData::EventType::DataRelease: {
+                set_release_color(cr);
+                draw = true;
+            };
+            break;
+
+            case TraceData::EventType::AddDependence: {
+                set_incoming_color(cr);
+                draw = true;
+            };
+            break;
+
+            case TraceData::EventType::SatisfyDependence: {
+                set_satisfy_color(cr);
+                draw = true;
+            };                                            
+            break;
+
+            case TraceData::EventType::TaskRunnable: {
+                set_runnable_color(cr);
+                draw = true;
+            };
+            break;
+            
+            default:
+            break;
+        }
+        if(draw) {
+            const uint64_t evt_loc = event_ptr->get_loc();
+            const double evt_loc_pos = (evt_loc*height_per_loc) + ((evt_loc-1.0)*spacing_between_locs)  + 10.0 + (height_per_loc * 0.4);
+            const double evt_loc_pos_bot = (evt_loc*height_per_loc) + ((evt_loc-1.0)*spacing_between_locs)  + 10.0 + (height_per_loc * 0.6);
+            cr->save();
+            cr->move_to(evt_time, evt_loc_pos);
+            cr->line_to(evt_time, evt_loc_pos_bot);
+            cr->set_identity_matrix();
+            cr->set_line_width(5.0);
+            cr->stroke();
+            cr->restore();
+        }
+        cr->restore();
+    }
+    cr->restore();
 }
 
 bool TraceArea::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
@@ -591,3 +683,10 @@ void TraceArea::set_position(const double position) {
     zoom_stop  = position + offset;
     redraw(false);
 }
+
+
+void TraceArea::set_selected_related_guid(const std::string & guid) {
+    selected_related_guid = guid;
+    redraw();
+}
+

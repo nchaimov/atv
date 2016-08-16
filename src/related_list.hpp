@@ -7,6 +7,7 @@
 #include <gtkmm/treemodelcolumn.h>
 #include <gtkmm/treestore.h>
 
+class MainWindow;
 
 class RelatedList : public Gtk::TreeView {
 
@@ -24,6 +25,7 @@ class RelatedList : public Gtk::TreeView {
     ModelColumns columns;
     Glib::RefPtr<Gtk::TreeStore> tree_store;
     const TraceData * trace_data;
+    MainWindow * main_window;
 
     void update_model();
 
@@ -31,7 +33,7 @@ class RelatedList : public Gtk::TreeView {
     void on_selection_changed();
 
     public:
-    RelatedList();
+    RelatedList(MainWindow * main_window);
     virtual ~RelatedList();
 
     const TraceData::Event * selected_event;

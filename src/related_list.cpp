@@ -3,8 +3,10 @@
 #include <sstream>
 #include <gtkmm/treeselection.h>
 #include "related_list.hpp"
+#include "main_window.hpp"
 
-RelatedList::RelatedList() : Gtk::TreeView(), selected_event(nullptr) {
+RelatedList::RelatedList(MainWindow * main_window) : Gtk::TreeView(),
+          main_window(main_window), selected_event(nullptr) {
     append_column("GUID", columns.col_name);
     append_column("Property", columns.col_prop);
     show_all_children();
@@ -196,12 +198,9 @@ void RelatedList::on_selection_changed() {
         Gtk::TreeModel::Row row = *iter;
         Glib::ustring name = row[columns.col_name];
         std::string guid = name.raw();
-        TraceData::event_ptr_list_t related_events(trace_data->get_events_for_guid(guid));
-        std::sort(related_events.begin(), related_events.end(), TraceData::timestamp_ptr_compare());
-        std::cerr << std::endl;
-        for(const auto event_ptr : related_events) {
-            std::cerr << event_ptr->to_string() << std::endl;
-        }
+        main_window->set_selected_related_guid(guid);
+    } else {
+        main_window->set_selected_related_guid("");
     }
 
 }
