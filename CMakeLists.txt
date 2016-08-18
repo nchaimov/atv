@@ -36,6 +36,11 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native -flto -O3 -f
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -march=native -flto -O3 -ffast-math")
 set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -march=native -flto -O3 -ffast-math")
 
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -march=native -flto -O3 -ffast-math -g3")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -march=native -flto -O3 -ffast-math -g3")
+set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} -march=native -flto -O3 -ffast-math -g3")
+set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} -march=native -flto -O3 -ffast-math -g3")
+
 IF (CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
   # Use the highest warning level for visual studio.
   SET(CMAKE_CXX_WARNING_LEVEL 4)
@@ -134,9 +139,17 @@ link_directories(${CAIROMM_LIBRARY_DIRS})
 add_definitions(${CAIROMM_CFLAGS_OTHER})
 set(LIBS ${LIBS} ${CAIROMM_LIBRARIES})
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SPARSEHASH REQUIRED libsparsehash)
+include_directories(${SPARSEHASH_INCLUDE_DIRS})
+link_directories(${SPARSEHASH_LIBRARY_DIRS})
+# Add other flags to the compiler
+add_definitions(${SPARSEHASH_CFLAGS_OTHER})
+set(LIBS ${LIBS} ${SPARSEHASH_LIBRARIES})
+
 if(USE_JEMALLOC)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(JEMALLOC REQUIRED jemalloc)
+pkg_check_modules(JEMALLOC jemalloc)
 # Setup CMake to use GTK+, tell the compiler where to look for headers
 # and to the linker where to look for libraries
 include_directories(${JEMALLOC_INCLUDE_DIRS})

@@ -5,6 +5,7 @@
 #include <sstream>
 #include <otf2/otf2.h>
 #include "trace_data.hpp"
+#include "utils.hpp"
 
 TraceData::TraceData() :
     cur_loc(0),
@@ -39,7 +40,6 @@ TraceData::TraceData() :
             INVALID_LINE,
             INVALID_LINE),
     next_seq_id(0) {
-    
 }
 
 TraceData::~TraceData() {
@@ -318,16 +318,19 @@ int TraceData::get_seq_id(const std::string & name) {
 TraceData::event_list_t::const_iterator TraceData::get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time) {
     TraceData::Event target(this, loc_ref, TraceData::EventType::Artificial, time, 0, INVALID_REGION_REF, INVALID_REGION_REF, INVALID_REGION_REF, INVALID_SIZE, 0);
     const auto & vect = events_map[loc_ref];
-    TraceData::event_list_t::const_iterator iter = std::lower_bound(vect.begin(), vect.end(), target, timestamp_compare());
     auto begin = vect.begin();
+    auto end = vect.end();
+    TraceData::event_list_t::const_iterator iter = std::lower_bound(begin, end, target, timestamp_compare());
     while(iter != begin) {
-        switch(iter->get_event_type()) {
-            case TraceData::EventType::Enter:
-            case TraceData::EventType::Leave:
-                return iter;
-                break;
-            default:
-                break;
+        if(iter != end) {
+            switch(iter->get_event_type()) {
+                case TraceData::EventType::Enter:
+                case TraceData::EventType::Leave:
+                    return iter;
+                    break;
+                default:
+                    break;
+            }
         }
         iter = std::prev(iter, 1);
     }

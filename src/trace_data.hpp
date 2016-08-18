@@ -11,6 +11,8 @@
 #include <sstream>
 #include <iomanip>
 
+#include <sparsehash/dense_hash_map>
+
 class TraceData {
 public:
     class SystemTreeNode {

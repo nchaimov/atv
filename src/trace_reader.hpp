@@ -40,7 +40,7 @@ class TraceReader {
     public:
     TraceReader(std::string & filename, const locations_t & locations, Callbacks * callbacks);
     virtual ~TraceReader();
-    ATVStatus read_traces(std::function<void(uint64_t)> progress_callback);
+    ATVStatus read_traces(std::function<void(uint64_t)> progress_callback = nullptr);
 
 };
 

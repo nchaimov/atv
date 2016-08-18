@@ -150,7 +150,9 @@ ATVStatus TraceReader::read_traces(std::function<void(uint64_t)> progress_callba
             check_status(status, "OTF2_Reader_CloseEvtReader");
 
             locs_processed++;
-            progress_callback(locs_processed);
+            if(progress_callback) {
+                progress_callback(locs_processed);
+            }
         }
 
         // Cleanup
