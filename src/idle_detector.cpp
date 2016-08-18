@@ -10,8 +10,8 @@
  
 
 
-IdleDetector::IdleDetector(TraceData * trace_data, double interval_sec, uint64_t length_threshold, uint64_t decrease_threshold)
-        : trace_data(trace_data), interval_sec(interval_sec), length_threshold(length_threshold), decrease_threshold(decrease_threshold)  {
+IdleDetector::IdleDetector(TraceData * trace_data, double interval_sec, uint64_t length_threshold, uint64_t occupancy_threshold)
+        : trace_data(trace_data), interval_sec(interval_sec), length_threshold(length_threshold), occupancy_threshold(occupancy_threshold)  {
     setup();
 }
 
@@ -62,67 +62,51 @@ void IdleDetector::analyze() {
                     max_occupancy = s;
                 }
             }
-
             current_time += interval;
         }
     }
 
-    // Now scan for decreasing segments
-    uint64_t segment_start = 0;
-    uint64_t segment_end = 0;
-    double last_occupancy = max_occupancy;
-    bool in_decreasing_segment = false;
+    // Find candidate end samples with occupancy less than threshold
+    std::vector<uint64_t> candidate_ends;
+    for(uint64_t sample = 1; sample < num_samples-1; ++sample) {
+        if(occupancy[sample] < occupancy_threshold && occupancy[sample+1] >= occupancy_threshold) {
+            candidate_ends.push_back(sample);    
+        }
+    }
+
     idle_region_list_t candidate_regions;
-    for(uint64_t sample = 1; sample < num_samples; ++sample) {
-        uint64_t & s = occupancy[sample];
-        if(in_decreasing_segment && (s > last_occupancy || s == max_occupancy) ) {
-            // End a segment
-            segment_end = sample-1;  
-            in_decreasing_segment = false;
-            // No 0-length segments
-            if(segment_start != segment_end && occupancy[segment_start] - occupancy[segment_end] > decrease_threshold) {
-                candidate_regions.push_back(std::make_tuple(segment_start, segment_end, occupancy[segment_start], occupancy[segment_end]));
+    // From each candidate end, scan back to full occupancy
+    for(const uint64_t candidate_end : candidate_ends) {
+        uint64_t candidate_start;
+        for(candidate_start = candidate_end; candidate_start >= 1; --candidate_start) {
+            if(occupancy[candidate_start] == max_occupancy) {
+                break;
             }
-        } else if (!in_decreasing_segment && (s < last_occupancy)) {
-            // Start a segment
-            segment_start = sample-1;
-            in_decreasing_segment = true;
-        } 
-        last_occupancy = s;
+        }
+        if(candidate_start != 0 && candidate_end - candidate_start >= length_threshold) {
+            candidate_regions.push_back(std::make_tuple(candidate_start, candidate_end, occupancy[candidate_start], occupancy[candidate_end]));
+        }
     }
 
-    // Join nearly-adjacent regions
     const uint64_t num_candidates = candidate_regions.size();
-    segment_start = 0;
-    segment_end = 0;
-    idle_region_list_t joined_regions;
-    for(uint64_t candidate = 0; candidate < num_candidates; ++candidate) {
-        if(segment_start == 0) {
-            segment_start = std::get<0>(candidate_regions[candidate]);
-            segment_end = std::get<1>(candidate_regions[candidate]);
-        } else {
-            const uint64_t this_start = std::get<0>(candidate_regions[candidate]);
-            if(this_start - segment_end < length_threshold) {
-                // Join
-                segment_end = std::get<1>(candidate_regions[candidate]);
-            } else {
-                // End of joined region
-                if(segment_end - segment_start > length_threshold) {
-                    joined_regions.push_back(std::make_tuple(segment_start, segment_end, occupancy[segment_start], occupancy[segment_end]));
-                }
-                segment_start = 0;
-                segment_end = 0;
-            }
-        }    
+    for(uint64_t candidate = 0; candidate < num_candidates - 1; ++candidate) {
+        const uint64_t my_start = std::get<0>(candidate_regions[candidate]);
+        const uint64_t next_start = std::get<0>(candidate_regions[candidate+1]);
+        if(my_start != next_start) {
+            idle_regions.push_back(candidate_regions[candidate]);        
+            const uint64_t my_end = std::get<1>(candidate_regions[candidate]);
+            starved_time += (my_end - my_start) * interval_sec;
+        }
     }
-
-    idle_regions = joined_regions;
+    // Last region
+    idle_regions.push_back(candidate_regions[num_candidates-1]);
 
 }
 
 std::string IdleDetector::get_report() {
     std::stringstream ss;
     
+    /*
     ss << std::setw(8) << "Sample" << " ";
     ss << std::setw(10) << "Occupancy\n";
     uint64_t sample_num = 0;
@@ -134,22 +118,32 @@ std::string IdleDetector::get_report() {
     ss << std::setw(8) << "max" << " ";
     ss << std::setw(10) << max_occupancy;
     ss << "\n\n";
-    
+    */
 
     ss << std::setw(10) << "Region" << " ";
     ss << std::setw(10) << "Start" << " ";
     ss << std::setw(10) << "End" << " ";
+    ss << std::setw(10) << "Length" << " ";
     ss << std::setw(10) << "Start Occ" << " ";
     ss << std::setw(10) << "End Occ" << "\n";
     uint64_t region_num = 0;
     for(auto region : idle_regions) {
+        const double start =  (std::get<0>(region) * interval_sec);
+        const double end =  (std::get<1>(region) * interval_sec);
+        const double len = end - start;
         ss << std::setw(10) << region_num << " ";
-        ss << std::setw(10) << std::get<0>(region) << " ";
-        ss << std::setw(10) << std::get<1>(region) << " ";
+        ss << std::setw(10) << std::fixed << std::setprecision(3) << start << " ";
+        ss << std::setw(10) << std::fixed << std::setprecision(3) << end << " ";
+        ss << std::setw(10) << std::fixed << std::setprecision(3) << len << " ";
         ss << std::setw(10) << std::get<2>(region) << " ";
         ss << std::setw(10) << std::get<3>(region) << "\n";
         ++region_num;
     }
+
+    ss << std::setw(10) << "Starved:" << " ";
+    ss << std::setw(10) << starved_time << " ";
+
+    ss << std::endl;
 
     return ss.str();
 }

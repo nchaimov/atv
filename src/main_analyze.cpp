@@ -11,7 +11,7 @@ int main(int argc, char * argv[]) {
     TraceReader reader{filename, locations, &callbacks};
     reader.read_traces();      
     TraceData * trace_data = callbacks.get_trace_data();
-    IdleDetector idle_detector(trace_data, 0.001, 3, 2);
+    IdleDetector idle_detector(trace_data, 0.0001, 3, 2);
     idle_detector.analyze();
     std::cerr << idle_detector.get_report() << std::endl;
     return 0;
