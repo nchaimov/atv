@@ -205,31 +205,36 @@ std::string IdleDetector::get_report() {
     ss << "\n\n";
     */
 
-    ss << std::setw(10) << "Region" << " ";
-    ss << std::setw(10) << "Start" << " ";
-    ss << std::setw(10) << "End" << " ";
-    ss << std::setw(10) << "Length" << " ";
-    ss << std::setw(10) << "Next" << " ";
-    ss << std::setw(10) << "Start Occ" << " ";
-    ss << std::setw(10) << "End Occ" << " ";
-    ss << std::setw(10) << "Next Occ" << "\n";
+    ss << std::setw(10) << std::left << "Region" << " ";
+    ss << std::setw(10) << std::left << "Start" << " ";
+    ss << std::setw(10) << std::left << "End" << " ";
+    ss << std::setw(10) << std::left << "Length" << " ";
+    //ss << std::setw(10) << "Next" << " ";
+    ss << std::setw(10) << std::left << "Start Occ" << " ";
+    ss << std::setw(10) << std::left << "End Occ" << " ";
+    ss << std::setw(15) << std::left << "Breaking Task" << " ";
+    ss << std::setw(15) << std::left << "GUID" << "\n";
     uint64_t region_num = 0;
     for(auto region : idle_regions) {
         const double start =  (std::get<0>(region) * interval_sec);
         const double end =  (std::get<1>(region) * interval_sec);
         const double len = end - start;
-        const double next = (std::get<2>(region) * interval_sec);
-        ss << std::setw(10) << region_num << " ";
-        ss << std::setw(10) << std::fixed << std::setprecision(3) << start << " ";
-        ss << std::setw(10) << std::fixed << std::setprecision(3) << end << " ";
-        ss << std::setw(10) << std::fixed << std::setprecision(3) << len << " ";
-        ss << std::setw(10) << std::fixed << std::setprecision(3) << next << " ";
-        ss << std::setw(10) << std::get<3>(region) << " ";
-        ss << std::setw(10) << std::get<4>(region) << " ";
-        ss << std::setw(10) << std::get<5>(region) << "\n";
+        //const double next = (std::get<2>(region) * interval_sec);
+        const std::string name = region_end_events[region_num]->get_object().get_name();
+        const std::string guid = region_end_events[region_num]->get_object().get_guid();
+        ss << std::setw(10) << std::right << region_num << " ";
+        ss << std::setw(10) << std::right << std::fixed << std::setprecision(3) << start << " ";
+        ss << std::setw(10) << std::right << std::fixed << std::setprecision(3) << end << " ";
+        ss << std::setw(10) << std::right << std::fixed << std::setprecision(3) << len << " ";
+        //ss << std::setw(10) << std::fixed << std::setprecision(3) << next << " ";
+        ss << std::setw(10) << std::right << std::get<3>(region) << " ";
+        ss << std::setw(10) << std::right << std::get<4>(region) << " ";
+        ss << std::setw(15) << std::left << name << " ";
+        ss << std::setw(15) << std::left << guid << "\n";
         ++region_num;
     }
 
+    ss << "\n";
     ss << std::setw(10) << "Starved:" << " ";
     ss << std::setw(10) << starved_time << " ";
 
