@@ -339,8 +339,25 @@ TraceData::event_list_t::const_iterator TraceData::get_compute_event_at_time(con
 }
 
 
+TraceData::event_list_t::const_iterator TraceData::get_next_compute_event(const OTF2_LocationRef loc_ref, TraceData::event_list_t::const_iterator iter) {
+    const auto & vect = events_map[loc_ref];
+    auto end = vect.end();
+    while(iter != end) {
+        iter = std::next(iter, 1);
+        switch(iter->get_event_type()) {
+            case TraceData::EventType::Enter:
+            case TraceData::EventType::Leave:
+                return iter;
+                break;
+            default:
+                break;
+        }
+    }
+    return iter;
+}
 
-TraceData::maybe_event_pair_t TraceData::get_task_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time) {
+
+TraceData::maybe_event_iter_pair_t TraceData::get_task_iter_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, const bool or_before) {
     auto it = get_compute_event_at_time(loc_ref, time);
     TraceData::event_list_t::const_iterator enter_it;
     TraceData::event_list_t::const_iterator leave_it;
@@ -360,10 +377,18 @@ TraceData::maybe_event_pair_t TraceData::get_task_at_time(const OTF2_LocationRef
         return boost::none;
     }
     // Make sure that the event is active during the time
-    if(enter_it->get_time() > time || leave_it->get_time() < time) {
+    if(!or_before && (enter_it->get_time() > time || leave_it->get_time() < time)) {
         return boost::none;
     } 
-    return event_pair_t(*enter_it, *leave_it);
+    return event_iter_pair_t(enter_it, leave_it);
+}
+
+TraceData::maybe_event_pair_t TraceData::get_task_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time) {
+    TraceData::maybe_event_iter_pair_t p = get_task_iter_at_time(loc_ref, time);
+    if(p) {
+        return event_pair_t(*(p->first), *(p->second));        
+    }
+    return boost::none;
 }
 
 std::string TraceData::get_task_name_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, bool also_guid, bool markup) {

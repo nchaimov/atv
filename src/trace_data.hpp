@@ -305,9 +305,21 @@ public:
             std::stringstream ss;
             ss << std::setw(5) << get_loc() << " ";
             ss << std::setw(10) << get_time() << " ";
+            ss << std::setw(10) << get_event_position() << " ";
             ss << std::left << std::setw(18) << get_event_type_str() << " ";
             ss << std::left << std::setw(45) << get_object().to_string() << " ";
             ss << std::left << std::setw(45) << get_subject().to_string() << " ";
+            return ss.str();
+        }
+
+        std::string to_unformatted_string() const {
+            std::stringstream ss;
+            ss << get_loc() << " ";
+            ss << get_time() << " ";
+            ss << get_event_position() << " ";
+            ss << get_event_type_str() << " ";
+            ss << get_object().to_string() << " ";
+            ss << get_subject().to_string() << " ";
             return ss.str();
         }
             
@@ -385,6 +397,9 @@ public:
     using event_pair_t = std::pair<const Event&, const Event&>;
     using maybe_event_pair_t = const boost::optional<const event_pair_t>;
 
+    using event_iter_pair_t = std::pair<event_list_t::const_iterator, event_list_t::const_iterator>;
+    using maybe_event_iter_pair_t = const boost::optional<const event_iter_pair_t>;
+
     using event_ptr_list_t = std::vector<const Event *>;
     using guid_map_t = std::unordered_map<std::string,event_ptr_list_t>;
     mutable guid_map_t guid_map;
@@ -436,7 +451,9 @@ public:
     const event_list_t & get_events(const OTF2_LocationRef loc_ref);
     event_list_t::const_iterator get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);
     maybe_event_pair_t get_task_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);   
+    maybe_event_iter_pair_t get_task_iter_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, const bool or_before = false);   
     std::string get_task_name_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, bool also_guid=false, bool markup=false);
+    event_list_t::const_iterator get_next_compute_event(const OTF2_LocationRef loc_ref, event_list_t::const_iterator iter);
 
     const event_ptr_list_t & get_events_for_guid(const std::string & guid) const;
     TraceData::GuidType get_type_for_guid(const std::string & guid);

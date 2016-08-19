@@ -20,11 +20,12 @@ protected:
     uint64_t num_samples;
 
     std::vector<uint64_t> occupancy;
-    using region_t = std::tuple<uint64_t, uint64_t, uint64_t, uint64_t>;
+    using region_t = std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>;
     using idle_region_list_t = std::vector<region_t>;
     idle_region_list_t idle_regions;
     uint32_t max_occupancy = 0;
     double starved_time = 0.0;
+    std::vector<const TraceData::Event*> region_end_events;
 
     void setup();
 
