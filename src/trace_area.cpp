@@ -2,6 +2,7 @@
 #include "main_window.hpp"
 #include "colors.hpp"
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 #include <sstream>
 
@@ -635,10 +636,19 @@ void TraceArea::set_task_label_for_coord(double x, double y) {
         matrix.transform_point(x, y);
         uint64_t loc = location_for_coord(y);
         if(loc < num_locs && x > 0 && x < trace_data->get_trace_length()) {
-            std::string name = trace_data->get_task_name_at_time(loc, x + trace_data->get_global_offset(), true, true);
+            const uint64_t time = x + trace_data->get_global_offset();
+            std::string name = trace_data->get_task_name_at_time(loc, time, true, true, true);
             std::stringstream ss;
             ss << loc << ": " << name;
             main_window->set_task_label_text(ss.str());
+
+            const double time_sec = (double)x / (double)trace_data->get_timer_resolution();
+            ss.str(std::string());
+            ss << std::fixed << std::setprecision(5) << time_sec; 
+            main_window->set_time_label_text(ss.str());
+        } else {
+            main_window->set_task_label_text("");
+            main_window->set_time_label_text("");
         }
         should_update_label = false;
     }

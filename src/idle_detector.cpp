@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 #include "idle_detector.hpp"
 #include "trace_data.hpp"
@@ -42,12 +43,7 @@ void IdleDetector::setup() {
     occupancy.insert(occupancy.begin(), num_samples, 0);
 }
 
-
-void IdleDetector::analyze() {
-    if(trace_data == nullptr) {
-        return;
-    }
-
+void IdleDetector::calculate_occupancy() {
     // Get occupancy for each sample point for each location
     const OTF2_LocationRef num_locs = trace_data->get_locations().size();
     for(OTF2_LocationRef loc = 0; loc < num_locs; ++loc) {
@@ -66,53 +62,55 @@ void IdleDetector::analyze() {
             current_time += interval;
         }
     }
+}
 
-    {
-        // Find candidate end samples with occupancy less than threshold
-        std::vector<uint64_t> candidate_ends;
-        for(uint64_t sample = 1; sample < num_samples-1; ++sample) {
-            if(occupancy[sample] < occupancy_threshold && occupancy[sample+1] >= occupancy_threshold) {
-                candidate_ends.push_back(sample);    
+void IdleDetector::find_idle_regions() {
+    // Find candidate end samples with occupancy less than threshold
+    std::vector<uint64_t> candidate_ends;
+    for(uint64_t sample = 1; sample < num_samples-1; ++sample) {
+        if(occupancy[sample] < occupancy_threshold && occupancy[sample+1] >= occupancy_threshold) {
+            candidate_ends.push_back(sample);    
+        }
+    }
+
+    idle_region_list_t candidate_regions;
+    // From each candidate end, scan back to full occupancy
+    for(const uint64_t candidate_end : candidate_ends) {
+        uint64_t candidate_start;
+        for(candidate_start = candidate_end; candidate_start >= 1; --candidate_start) {
+            if(occupancy[candidate_start] == max_occupancy) {
+                break;
             }
         }
-
-        idle_region_list_t candidate_regions;
-        // From each candidate end, scan back to full occupancy
-        for(const uint64_t candidate_end : candidate_ends) {
-            uint64_t candidate_start;
-            for(candidate_start = candidate_end; candidate_start >= 1; --candidate_start) {
-                if(occupancy[candidate_start] == max_occupancy) {
+        if(candidate_start != 0 && candidate_end - candidate_start >= length_threshold) {
+            // This is a candidate
+            // Scan forward to find next full occupancy
+            uint64_t next_full;
+            for(next_full = candidate_end; next_full < num_samples; ++next_full) {
+                if(occupancy[next_full] == max_occupancy) {
                     break;
                 }
             }
-            if(candidate_start != 0 && candidate_end - candidate_start >= length_threshold) {
-                // This is a candidate
-                // Scan forward to find next full occupancy
-                uint64_t next_full;
-                for(next_full = candidate_end; next_full < num_samples; ++next_full) {
-                    if(occupancy[next_full] == max_occupancy) {
-                        break;
-                    }
-                }
-                candidate_regions.push_back(std::make_tuple(candidate_start, candidate_end, next_full, occupancy[candidate_start], occupancy[candidate_end], occupancy[next_full]));
-            }
+            candidate_regions.push_back(std::make_tuple(candidate_start, candidate_end, next_full, occupancy[candidate_start], occupancy[candidate_end], occupancy[next_full]));
         }
-
-        const uint64_t num_candidates = candidate_regions.size();
-        for(uint64_t candidate = 0; candidate < num_candidates - 1; ++candidate) {
-            const uint64_t my_start = std::get<0>(candidate_regions[candidate]);
-            const uint64_t next_start = std::get<0>(candidate_regions[candidate+1]);
-            if(my_start != next_start) {
-                idle_regions.push_back(candidate_regions[candidate]);        
-                const uint64_t my_end = std::get<1>(candidate_regions[candidate]);
-                starved_time += (my_end - my_start) * interval_sec;
-            }
-        }
-        // Last region
-        idle_regions.push_back(candidate_regions[num_candidates-1]);
     }
 
-    // Now we have all the idle regions
+    const uint64_t num_candidates = candidate_regions.size();
+    for(uint64_t candidate = 0; candidate < num_candidates - 1; ++candidate) {
+        const uint64_t my_start = std::get<0>(candidate_regions[candidate]);
+        const uint64_t next_start = std::get<0>(candidate_regions[candidate+1]);
+        if(my_start != next_start) {
+            idle_regions.push_back(candidate_regions[candidate]);        
+            const uint64_t my_end = std::get<1>(candidate_regions[candidate]);
+            starved_time += (my_end - my_start) * interval_sec;
+        }
+    }
+    // Last region
+    idle_regions.push_back(candidate_regions[num_candidates-1]);
+}
+
+void IdleDetector::find_region_end_events() {
+    const OTF2_LocationRef num_locs = trace_data->get_locations().size();
     for(const region_t & region : idle_regions) {
         const uint64_t region_end = std::get<1>(region);
         const uint64_t rel_time = (uint64_t)std::round(region_end * interval);
@@ -127,7 +125,7 @@ void IdleDetector::analyze() {
         uint64_t candidate_time = global_time;
         const TraceData::Event * end_event = nullptr;
         uint64_t tasks_running = 0;
-        while(tasks_running < 2 && candidate_time < last_time) {
+        while(tasks_running < occupancy_threshold && candidate_time < last_time) {
             // Check how many tasks are running at candidate_time
             tasks_running = 0;
             uint64_t earliest_next_time = std::numeric_limits<uint64_t>::max();
@@ -157,7 +155,8 @@ void IdleDetector::analyze() {
                         earliest_next_time = next_time;
                     }
                 } else {
-                    std::cerr << "No task at time " << candidate_time << "?" << std::endl;
+                    std::cerr << "ERROR: No task found for candidate time." << std::endl;
+                    throw std::runtime_error("Task not found in region.");
                 }
             }
             if(tasks_running == 1) {
@@ -165,27 +164,36 @@ void IdleDetector::analyze() {
             }
             if(earliest_next_time == std::numeric_limits<uint64_t>::max()) {
                 std::cerr << "ERROR: earliest_next_time should have changed." << std::endl;
-                abort();
+                throw std::runtime_error("No later event found");
             }
             if(earliest_next_time == candidate_time) {
                 std::cerr << "ERROR: candidate_time should have changed." << std::endl;
-                abort();
+                throw std::runtime_error("Iteration repeated");
             }
             candidate_time = earliest_next_time + 1;
         }
         if(end_event == nullptr) {
             std::cerr << "ERROR: end_event should not be null." << std::endl;
+            throw std::runtime_error("No region-breaking task found");
         } else {
             if(end_event->get_time() > last_time) {
-                std::cerr << "End event should not occur after next full occupancy!" << std::endl;
+                std::cerr << "ERROR: End event should not occur after next full occupancy!" << std::endl;
+                throw std::runtime_error("Region-breaking task outside region.");
             }
             region_end_events.push_back(end_event);
         }
     }
-    std::cerr << std::endl;
+}
 
 
+void IdleDetector::analyze() {
+    if(trace_data == nullptr) {
+        return;
+    }
 
+    calculate_occupancy();
+    find_idle_regions();
+    find_region_end_events();
 }
 
 std::string IdleDetector::get_report() {
@@ -205,13 +213,13 @@ std::string IdleDetector::get_report() {
     ss << "\n\n";
     */
 
-    ss << std::setw(10) << std::left << "Region" << " ";
-    ss << std::setw(10) << std::left << "Start" << " ";
-    ss << std::setw(10) << std::left << "End" << " ";
-    ss << std::setw(10) << std::left << "Length" << " ";
+    ss << std::setw(10) << std::right << "Region" << " ";
+    ss << std::setw(10) << std::right << "Start" << " ";
+    ss << std::setw(10) << std::right << "End" << " ";
+    ss << std::setw(10) << std::right << "Length" << " ";
     //ss << std::setw(10) << "Next" << " ";
-    ss << std::setw(10) << std::left << "Start Occ" << " ";
-    ss << std::setw(10) << std::left << "End Occ" << " ";
+    ss << std::setw(10) << std::right << "Start Occ" << " ";
+    ss << std::setw(10) << std::right << "End Occ" << " ";
     ss << std::setw(15) << std::left << "Breaking Task" << " ";
     ss << std::setw(15) << std::left << "GUID" << "\n";
     uint64_t region_num = 0;

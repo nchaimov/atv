@@ -1,6 +1,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
 #include <iterator>
 #include <sstream>
 #include <otf2/otf2.h>
@@ -356,6 +357,23 @@ TraceData::event_list_t::const_iterator TraceData::get_next_compute_event(const 
     return iter;
 }
 
+TraceData::event_list_t::const_iterator TraceData::get_prev_compute_event(const OTF2_LocationRef loc_ref, TraceData::event_list_t::const_iterator iter) {
+    const auto & vect = events_map[loc_ref];
+    auto begin = vect.begin();
+    while(iter != begin) {
+        iter = std::prev(iter, 1);
+        switch(iter->get_event_type()) {
+            case TraceData::EventType::Enter:
+            case TraceData::EventType::Leave:
+                return iter;
+                break;
+            default:
+                break;
+        }
+    }
+    return iter;
+}
+
 
 TraceData::maybe_event_iter_pair_t TraceData::get_task_iter_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, const bool or_before) {
     auto it = get_compute_event_at_time(loc_ref, time);
@@ -391,7 +409,7 @@ TraceData::maybe_event_pair_t TraceData::get_task_at_time(const OTF2_LocationRef
     return boost::none;
 }
 
-std::string TraceData::get_task_name_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, bool also_guid, bool markup) {
+std::string TraceData::get_task_name_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, bool also_guid, bool markup, bool also_time) {
     auto events = get_task_at_time(loc_ref, time);
     std::stringstream ss;
     if(events) {
@@ -404,6 +422,13 @@ std::string TraceData::get_task_name_at_time(const OTF2_LocationRef loc_ref, con
         }
         if(also_guid) {
             ss << " " << events->first.get_object().get_guid();
+        }
+        if(also_time) {
+            const uint64_t task_start = events->first.get_time() - get_global_offset();
+            const uint64_t task_end = events->second.get_time() - get_global_offset();
+            const double start_secs = (double)task_start / (double)get_timer_resolution();
+            const double end_secs = (double)task_end / (double)get_timer_resolution();
+            ss << " " << std::fixed << std::setprecision(5) << start_secs << " -> " << std::fixed << std::setprecision(5) << end_secs;
         }
     }
     return ss.str();

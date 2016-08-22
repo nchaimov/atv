@@ -205,6 +205,32 @@ void MainWindow::setup_toolbar() {
         "        <property name='homogeneous'>False</property>"
         "      </packing>"
         "    </child>"
+        "    <child>"
+        "      <object class='GtkSeparatorToolItem' id='bot_tool_sep'>"
+        "        <property name='draw'>False</property>"
+        "        <property name='visible'>True</property>"
+        "        <property name='can_focus'>False</property>"
+        "      </object>"
+        "      <packing>"
+        "        <property name='expand'>True</property>"
+        "        <property name='homogeneous'>False</property>"
+        "      </packing>"
+        "    </child>"
+        "    <child>"
+        "      <object class='GtkToolItem' id='right_label_holder'>"
+        "        <property name='visible'>True</property>"
+        "        <child>"
+        "          <object class='GtkLabel' id='time_label'>"
+        "            <property name='visible'>True</property>"
+        "            <property name='label'></property>"
+        "          </object>"
+        "        </child>"
+        "      </object>"
+        "      <packing>"
+        "        <property name='expand'>False</property>"
+        "        <property name='homogeneous'>False</property>"
+        "      </packing>"
+        "    </child>"
         "  </object>"
         "</interface>";
     builder->add_from_string(bottom_bar_ui_info);
@@ -217,6 +243,13 @@ void MainWindow::setup_toolbar() {
     if(task_label == nullptr) {
         std::cerr << "No task label found??" << std::endl;
         throw std::runtime_error("Unable to create task label");
+    }
+    builder->get_widget("time_label", time_label);
+    if(time_label == nullptr) {
+        std::cerr << "No time label found??" << std::endl;
+        throw std::runtime_error("Unable to create time label");
+    } else {
+        time_label->set_justify(Gtk::JUSTIFY_RIGHT);
     }
 }
 
@@ -286,6 +319,12 @@ void MainWindow::on_view_changed() {
 void MainWindow::set_task_label_text(const Glib::ustring& str) {
     if(task_label != nullptr) {
         task_label->set_markup(str);
+    }
+}
+
+void MainWindow::set_time_label_text(const Glib::ustring& str) {
+    if(time_label != nullptr) {
+        time_label->set_markup(str);
     }
 }
 

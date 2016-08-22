@@ -34,6 +34,7 @@ public:
     new_data_signal_t new_data_event() const;
 
     void set_task_label_text(const Glib::ustring& str);
+    void set_time_label_text(const Glib::ustring& str);
     void set_selected_event(const TraceData::Event * event);
     void set_scroll_range(const double min, const double max);
     void set_scroll_page_size(const double page_size);
@@ -54,6 +55,7 @@ protected:
     Gtk::Toolbar * top_bar;
     Gtk::Toolbar * bottom_bar;
     Gtk::Label * task_label;
+    Gtk::Label * time_label;
     Gtk::ComboBox * combobox;
     Gtk::Scrollbar scrollbar;
 

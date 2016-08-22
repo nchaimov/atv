@@ -452,8 +452,9 @@ public:
     event_list_t::const_iterator get_compute_event_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);
     maybe_event_pair_t get_task_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time);   
     maybe_event_iter_pair_t get_task_iter_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, const bool or_before = false);   
-    std::string get_task_name_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, bool also_guid=false, bool markup=false);
+    std::string get_task_name_at_time(const OTF2_LocationRef loc_ref, const OTF2_TimeStamp time, bool also_guid=false, bool markup=false, bool also_time=false);
     event_list_t::const_iterator get_next_compute_event(const OTF2_LocationRef loc_ref, event_list_t::const_iterator iter);
+    event_list_t::const_iterator get_prev_compute_event(const OTF2_LocationRef loc_ref, event_list_t::const_iterator iter);
 
     const event_ptr_list_t & get_events_for_guid(const std::string & guid) const;
     TraceData::GuidType get_type_for_guid(const std::string & guid);

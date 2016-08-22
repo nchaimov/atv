@@ -28,6 +28,9 @@ protected:
     std::vector<const TraceData::Event*> region_end_events;
 
     void setup();
+    void calculate_occupancy();
+    void find_idle_regions();
+    void find_region_end_events();
 
 public:
     IdleDetector(TraceData * trace_data, double interval_sec, uint64_t length_threshold, uint64_t occupancy_threshold);
