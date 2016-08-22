@@ -109,7 +109,7 @@ void IdleDetector::find_idle_regions() {
     idle_regions.push_back(candidate_regions[num_candidates-1]);
 }
 
-void IdleDetector::find_region_end_events() {
+void IdleDetector::find_region_boundary_events(bool forward, event_list_t & list) {
     const OTF2_LocationRef num_locs = trace_data->get_locations().size();
     for(const region_t & region : idle_regions) {
         const uint64_t region_end = std::get<1>(region);
@@ -119,16 +119,22 @@ void IdleDetector::find_region_end_events() {
         const uint64_t global_time = offset + rel_time;
         const uint64_t next_full_occ_time = std::get<2>(region);
         const uint64_t rel_next_full_occ_time = (uint64_t)std::round(next_full_occ_time * interval);
+        // Time marking the return to full occupancy after the idle region
         const uint64_t last_time = offset + rel_next_full_occ_time;
-        // Scan forward in the trace to find the earliest time
-        // after the idle region where multiple events are running
+        const uint64_t prev_full_occ_time = std::get<0>(region);
+        const uint64_t rel_prev_full_occ_time = (uint64_t)std::round(prev_full_occ_time * interval);
+        // Time marking the last full occupancy before the idle region
+        const uint64_t first_time = offset + rel_prev_full_occ_time;
+        // Scan forward or backwards in the trace to find the earliest time
+        // after the idle region or latest time within the idle region
+        // where multiple events are running
         uint64_t candidate_time = global_time;
         const TraceData::Event * end_event = nullptr;
         uint64_t tasks_running = 0;
-        while(tasks_running < occupancy_threshold && candidate_time < last_time) {
+        while(tasks_running < occupancy_threshold && candidate_time < last_time && candidate_time > first_time) {
             // Check how many tasks are running at candidate_time
             tasks_running = 0;
-            uint64_t earliest_next_time = std::numeric_limits<uint64_t>::max();
+            uint64_t candidate_next_time = forward ? std::numeric_limits<uint64_t>::max() : std::numeric_limits<uint64_t>::min();
             const TraceData::Event * candidate_event = nullptr;
             for(uint64_t loc = 0; loc < num_locs; ++loc) {
                 TraceData::maybe_event_iter_pair_t task = 
@@ -140,19 +146,25 @@ void IdleDetector::find_region_end_events() {
                     if(this_start <= candidate_time && this_end >= candidate_time) {
                         ++tasks_running;
                         candidate_event = &(*(task->first));
-                    } else if(this_start > candidate_time){
+                    } else if(forward && this_start > candidate_time) {
                         // If this task isn't running, then use its start time
                         // as a potential next event start time.
-                        if(this_start < earliest_next_time ) {
-                            earliest_next_time = this_start;
+                        if(this_start < candidate_next_time) {
+                            candidate_next_time = this_start;
+                        } 
+                    } else if(!forward && this_end < candidate_time) {
+                        if(this_end > candidate_next_time) {
+                            candidate_next_time = this_end;    
                         }
                     } 
                     // Get the start time of the next event
+                    // or end time of the prev event
                     TraceData::event_list_t::const_iterator next = 
-                        trace_data->get_next_compute_event(loc, task->second);
+                        forward ? trace_data->get_next_compute_event(loc, task->second) : 
+                          trace_data->get_prev_compute_event(loc, task->first);
                     const uint64_t next_time = next->get_time();
-                    if(next_time < earliest_next_time) {
-                        earliest_next_time = next_time;
+                    if((forward && next_time < candidate_next_time) || (!forward && next_time > candidate_next_time)) {
+                        candidate_next_time = next_time;
                     }
                 } else {
                     std::cerr << "ERROR: No task found for candidate time." << std::endl;
@@ -162,25 +174,36 @@ void IdleDetector::find_region_end_events() {
             if(tasks_running == 1) {
                 end_event = candidate_event;
             }
-            if(earliest_next_time == std::numeric_limits<uint64_t>::max()) {
-                std::cerr << "ERROR: earliest_next_time should have changed." << std::endl;
-                throw std::runtime_error("No later event found");
+            if((forward && candidate_next_time == std::numeric_limits<uint64_t>::max()) || (!forward && candidate_next_time == std::numeric_limits<uint64_t>::min())) {
+                std::cerr << "ERROR: candidate_next_time should have changed." << std::endl;
+                throw std::runtime_error("No next event found");
             }
-            if(earliest_next_time == candidate_time) {
+            if(candidate_next_time == candidate_time) {
                 std::cerr << "ERROR: candidate_time should have changed." << std::endl;
                 throw std::runtime_error("Iteration repeated");
             }
-            candidate_time = earliest_next_time + 1;
+            if(forward && candidate_next_time < candidate_time) {
+                std::cerr << "ERROR: candidate_time should not have decreased in forward mode." << std::endl;
+                throw std::runtime_error("Bad candidate time");
+            }
+            if(!forward && candidate_next_time > candidate_time) {
+                std::cerr << "ERROR: candidate_time should not have increased in backward mode." << std::endl;
+                throw std::runtime_error("Bad candidate time");
+            }
+            candidate_time = candidate_next_time;
         }
         if(end_event == nullptr) {
             std::cerr << "ERROR: end_event should not be null." << std::endl;
             throw std::runtime_error("No region-breaking task found");
         } else {
-            if(end_event->get_time() > last_time) {
+            if(forward && end_event->get_time() > last_time) {
                 std::cerr << "ERROR: End event should not occur after next full occupancy!" << std::endl;
                 throw std::runtime_error("Region-breaking task outside region.");
+            } else if(!forward && end_event->get_time() < first_time) {
+                std::cerr << "ERROR: End event should not occur before previous full occupancy!" << std::endl;
+                throw std::runtime_error("Region-breaking task outside region.");
             }
-            region_end_events.push_back(end_event);
+            list.push_back(end_event);
         }
     }
 }
@@ -193,10 +216,11 @@ void IdleDetector::analyze() {
 
     calculate_occupancy();
     find_idle_regions();
-    find_region_end_events();
+    find_region_boundary_events(false, region_start_events);
+    find_region_boundary_events(true, region_end_events);
 }
 
-std::string IdleDetector::get_report() {
+std::string IdleDetector::get_report() const {
     std::stringstream ss;
     
     /*
@@ -213,32 +237,38 @@ std::string IdleDetector::get_report() {
     ss << "\n\n";
     */
 
-    ss << std::setw(10) << std::right << "Region" << " ";
+    ss << std::setw(5) << std::right << "Region" << " ";
     ss << std::setw(10) << std::right << "Start" << " ";
     ss << std::setw(10) << std::right << "End" << " ";
     ss << std::setw(10) << std::right << "Length" << " ";
     //ss << std::setw(10) << "Next" << " ";
-    ss << std::setw(10) << std::right << "Start Occ" << " ";
-    ss << std::setw(10) << std::right << "End Occ" << " ";
-    ss << std::setw(15) << std::left << "Breaking Task" << " ";
-    ss << std::setw(15) << std::left << "GUID" << "\n";
+    //ss << std::setw(10) << std::right << "Start Occ" << " ";
+    //ss << std::setw(10) << std::right << "End Occ" << " ";
+    ss << std::setw(16) << std::left << "Initiating Task" << " ";
+    ss << std::setw(16) << std::left << "GUID" << "\n";
+    ss << std::setw(16) << std::left << "Breaking Task" << " ";
+    ss << std::setw(16) << std::left << "GUID" << "\n";
     uint64_t region_num = 0;
     for(auto region : idle_regions) {
         const double start =  (std::get<0>(region) * interval_sec);
         const double end =  (std::get<1>(region) * interval_sec);
         const double len = end - start;
         //const double next = (std::get<2>(region) * interval_sec);
-        const std::string name = region_end_events[region_num]->get_object().get_name();
-        const std::string guid = region_end_events[region_num]->get_object().get_guid();
-        ss << std::setw(10) << std::right << region_num << " ";
+        const std::string init_name = region_start_events[region_num]->get_object().get_name();
+        const std::string init_guid = region_start_events[region_num]->get_object().get_guid();
+        const std::string break_name = region_end_events[region_num]->get_object().get_name();
+        const std::string break_guid = region_end_events[region_num]->get_object().get_guid();
+        ss << std::setw(5) << std::right << region_num << " ";
         ss << std::setw(10) << std::right << std::fixed << std::setprecision(3) << start << " ";
         ss << std::setw(10) << std::right << std::fixed << std::setprecision(3) << end << " ";
         ss << std::setw(10) << std::right << std::fixed << std::setprecision(3) << len << " ";
         //ss << std::setw(10) << std::fixed << std::setprecision(3) << next << " ";
-        ss << std::setw(10) << std::right << std::get<3>(region) << " ";
-        ss << std::setw(10) << std::right << std::get<4>(region) << " ";
-        ss << std::setw(15) << std::left << name << " ";
-        ss << std::setw(15) << std::left << guid << "\n";
+        //ss << std::setw(10) << std::right << std::get<3>(region) << " ";
+        //ss << std::setw(10) << std::right << std::get<4>(region) << " ";
+        ss << std::setw(15) << std::left << init_name << " ";
+        ss << std::setw(15) << std::left << init_guid << " ";
+        ss << std::setw(15) << std::left << break_name << " ";
+        ss << std::setw(15) << std::left << break_guid << "\n";
         ++region_num;
     }
 
