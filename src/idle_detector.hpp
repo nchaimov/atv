@@ -33,7 +33,7 @@ protected:
     void setup();
     void calculate_occupancy();
     void find_idle_regions();
-    void find_region_boundary_events(bool forward, event_list_t & list);
+    void find_region_boundary_events(const bool forward, const bool decreasing, const bool from_start, const uint64_t threshold, event_list_t & list);
 
 public:
     IdleDetector(TraceData * trace_data, double interval_sec, uint64_t length_threshold, uint64_t occupancy_threshold);

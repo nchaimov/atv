@@ -8,6 +8,8 @@
 
 #include "idle_detector.hpp"
 #include "trace_data.hpp"
+#include "utils.hpp"
+
 #include <otf2/otf2.h>
  
 
@@ -36,7 +38,7 @@ void IdleDetector::setup() {
     end = offset + length;
     num_samples = (uint64_t)std::round(length/interval);
 
-    std::cerr << "num samples: " << num_samples << std::endl;
+    DEBUG_MSG("num samples: " << num_samples);
 
     occupancy.clear();
     occupancy.reserve(num_samples);
@@ -62,6 +64,24 @@ void IdleDetector::calculate_occupancy() {
             current_time += interval;
         }
     }
+
+#ifdef ATV_DEBUG
+    std::stringstream ss;
+    ss << std::setw(8) << "Sample" << " ";
+    ss << std::setw(8) << "Time" << " ";
+    ss << std::setw(10) << "Occupancy\n";
+    uint64_t sample_num = 0;
+    for(auto sample : occupancy) {
+        ss << std::setw(8) << sample_num << " ";
+        ss << std::setw(8) << (sample_num * interval_sec) << " ";
+        ss << std::setw(10) << sample << "\n";
+        ++sample_num;
+    }
+    ss << std::setw(8) << "max" << " ";
+    ss << std::setw(10) << max_occupancy;
+    ss << "\n";
+    DEBUG_MSG(ss.str());
+#endif
 }
 
 void IdleDetector::find_idle_regions() {
@@ -109,8 +129,18 @@ void IdleDetector::find_idle_regions() {
     idle_regions.push_back(candidate_regions[num_candidates-1]);
 }
 
-void IdleDetector::find_region_boundary_events(bool forward, event_list_t & list) {
+void IdleDetector::find_region_boundary_events(const bool forward, const bool less_than, const bool from_start, const uint64_t threshold, IdleDetector::event_list_t & list) {
+    DEBUG_MSG("Forward:    " << forward);
+    DEBUG_MSG("Less Than:  " << less_than);
+    DEBUG_MSG("From Start: " << from_start);
+    DEBUG_MSG("Threshold:  " << threshold);
+
+    if(!forward && from_start) {
+        std::cerr << "ERROR: Scanning backwards from the start doesn't make sense." << std::endl;
+        throw std::invalid_argument("!forward && from_start");
+    }
     const OTF2_LocationRef num_locs = trace_data->get_locations().size();
+    uint64_t region_num = 0;
     for(const region_t & region : idle_regions) {
         const uint64_t region_end = std::get<1>(region);
         const uint64_t rel_time = (uint64_t)std::round(region_end * interval);
@@ -128,10 +158,14 @@ void IdleDetector::find_region_boundary_events(bool forward, event_list_t & list
         // Scan forward or backwards in the trace to find the earliest time
         // after the idle region or latest time within the idle region
         // where multiple events are running
-        uint64_t candidate_time = global_time;
+        DEBUG_MSG(std::endl << "Region " << region_num << ": " << global_time << " from " << first_time << " to " << last_time);
+        DEBUG_MSG("Region sample offsets: " << prev_full_occ_time << " " << region_end << " " << next_full_occ_time);
+        uint64_t candidate_time = from_start ? first_time : global_time;
         const TraceData::Event * end_event = nullptr;
-        uint64_t tasks_running = 0;
-        while(tasks_running < occupancy_threshold && candidate_time < last_time && candidate_time > first_time) {
+        uint64_t tasks_running = less_than ? std::numeric_limits<uint64_t>::min() : std::numeric_limits<uint64_t>::max();
+        while( ((less_than && tasks_running < threshold) || (!less_than && tasks_running >= threshold))
+                && candidate_time <= last_time && candidate_time >= first_time) {
+            DEBUG_MSG("Candidate time: " << candidate_time);
             // Check how many tasks are running at candidate_time
             tasks_running = 0;
             uint64_t candidate_next_time = forward ? std::numeric_limits<uint64_t>::max() : std::numeric_limits<uint64_t>::min();
@@ -143,7 +177,9 @@ void IdleDetector::find_region_boundary_events(bool forward, event_list_t & list
                     // Is this task running?
                     const uint64_t this_start = task->first->get_time();
                     const uint64_t this_end   = task->second->get_time();
+                    DEBUG_MSG("loc " << loc << " start " << this_start << " end " << this_end << " " << task->first->get_object().get_name() << " " << task->first->get_object().get_guid());
                     if(this_start <= candidate_time && this_end >= candidate_time) {
+                        DEBUG_MSG("loc " << loc << " task running");
                         ++tasks_running;
                         candidate_event = &(*(task->first));
                     } else if(forward && this_start > candidate_time) {
@@ -151,12 +187,30 @@ void IdleDetector::find_region_boundary_events(bool forward, event_list_t & list
                         // as a potential next event start time.
                         if(this_start < candidate_next_time) {
                             candidate_next_time = this_start;
+                            DEBUG_MSG("Forward Start new candidate_next_time: " << candidate_next_time);
                         } 
+                    } else if(!forward && this_start < candidate_time) {
+                        if(this_start > candidate_next_time) {
+                            candidate_next_time = this_start;    
+                            DEBUG_MSG("Backward Start new candidate_next_time: " << candidate_next_time);
+                        }
+                    }
+                    
+                    if(forward && this_end > candidate_time) {
+                        // Also try its end time
+                        DEBUG_MSG("this_end: " << this_end << " candidate time: " << candidate_time);
+                        if(this_end < candidate_next_time) {
+                            candidate_next_time = this_end;
+                            DEBUG_MSG("Forward End new candidate_next_time: " << candidate_next_time);
+                        }
                     } else if(!forward && this_end < candidate_time) {
                         if(this_end > candidate_next_time) {
                             candidate_next_time = this_end;    
+                            DEBUG_MSG("Backward End new candidate_next_time: " << candidate_next_time);
                         }
-                    } 
+                    }
+                    
+
                     // Get the start time of the next event
                     // or end time of the prev event
                     TraceData::event_list_t::const_iterator next = 
@@ -165,12 +219,15 @@ void IdleDetector::find_region_boundary_events(bool forward, event_list_t & list
                     const uint64_t next_time = next->get_time();
                     if((forward && next_time < candidate_next_time) || (!forward && next_time > candidate_next_time)) {
                         candidate_next_time = next_time;
+                        DEBUG_MSG("loc " << loc << " next " << next->to_unformatted_string());
+                        DEBUG_MSG("Next/Prev New candidate_next_time: " << candidate_next_time);
                     }
                 } else {
                     std::cerr << "ERROR: No task found for candidate time." << std::endl;
                     throw std::runtime_error("Task not found in region.");
                 }
             }
+            DEBUG_MSG("Tasks running: " << tasks_running);
             if(tasks_running == 1) {
                 end_event = candidate_event;
             }
@@ -190,7 +247,11 @@ void IdleDetector::find_region_boundary_events(bool forward, event_list_t & list
                 std::cerr << "ERROR: candidate_time should not have increased in backward mode." << std::endl;
                 throw std::runtime_error("Bad candidate time");
             }
-            candidate_time = candidate_next_time;
+            if(!forward && candidate_next_time == 0) {
+                std::cerr << "ERROR: should not have reached beginning of trace." << std::endl;
+                throw std::runtime_error("Bad candidate time");
+            }
+            candidate_time = forward ? candidate_next_time + 1 : candidate_next_time - 1;
         }
         if(end_event == nullptr) {
             std::cerr << "ERROR: end_event should not be null." << std::endl;
@@ -205,6 +266,7 @@ void IdleDetector::find_region_boundary_events(bool forward, event_list_t & list
             }
             list.push_back(end_event);
         }
+        ++region_num;
     }
 }
 
@@ -216,8 +278,8 @@ void IdleDetector::analyze() {
 
     calculate_occupancy();
     find_idle_regions();
-    find_region_boundary_events(false, region_start_events);
-    find_region_boundary_events(true, region_end_events);
+    find_region_boundary_events(true,  false, true,  occupancy_threshold, region_start_events);
+    find_region_boundary_events(true,  true,  false, occupancy_threshold, region_end_events);
 }
 
 std::string IdleDetector::get_report() const {
@@ -237,15 +299,15 @@ std::string IdleDetector::get_report() const {
     ss << "\n\n";
     */
 
-    ss << std::setw(5) << std::right << "Region" << " ";
-    ss << std::setw(10) << std::right << "Start" << " ";
-    ss << std::setw(10) << std::right << "End" << " ";
-    ss << std::setw(10) << std::right << "Length" << " ";
+    ss << std::setw(6) << std::right << "Region" << " ";
+    ss << std::setw(11) << std::right << "Start" << " ";
+    ss << std::setw(11) << std::right << "End" << " ";
+    ss << std::setw(11) << std::right << "Length" << " ";
     //ss << std::setw(10) << "Next" << " ";
     //ss << std::setw(10) << std::right << "Start Occ" << " ";
     //ss << std::setw(10) << std::right << "End Occ" << " ";
     ss << std::setw(16) << std::left << "Initiating Task" << " ";
-    ss << std::setw(16) << std::left << "GUID" << "\n";
+    ss << std::setw(16) << std::left << "GUID" << " ";
     ss << std::setw(16) << std::left << "Breaking Task" << " ";
     ss << std::setw(16) << std::left << "GUID" << "\n";
     uint64_t region_num = 0;
@@ -258,17 +320,17 @@ std::string IdleDetector::get_report() const {
         const std::string init_guid = region_start_events[region_num]->get_object().get_guid();
         const std::string break_name = region_end_events[region_num]->get_object().get_name();
         const std::string break_guid = region_end_events[region_num]->get_object().get_guid();
-        ss << std::setw(5) << std::right << region_num << " ";
-        ss << std::setw(10) << std::right << std::fixed << std::setprecision(3) << start << " ";
-        ss << std::setw(10) << std::right << std::fixed << std::setprecision(3) << end << " ";
-        ss << std::setw(10) << std::right << std::fixed << std::setprecision(3) << len << " ";
+        ss << std::setw(6) << std::right << region_num << " ";
+        ss << std::setw(11) << std::right << std::fixed << std::setprecision(3) << start << " ";
+        ss << std::setw(11) << std::right << std::fixed << std::setprecision(3) << end << " ";
+        ss << std::setw(11) << std::right << std::fixed << std::setprecision(3) << len << " ";
         //ss << std::setw(10) << std::fixed << std::setprecision(3) << next << " ";
         //ss << std::setw(10) << std::right << std::get<3>(region) << " ";
         //ss << std::setw(10) << std::right << std::get<4>(region) << " ";
-        ss << std::setw(15) << std::left << init_name << " ";
-        ss << std::setw(15) << std::left << init_guid << " ";
-        ss << std::setw(15) << std::left << break_name << " ";
-        ss << std::setw(15) << std::left << break_guid << "\n";
+        ss << std::setw(16) << std::left << init_name << " ";
+        ss << std::setw(16) << std::left << init_guid << " ";
+        ss << std::setw(16) << std::left << break_name << " ";
+        ss << std::setw(16) << std::left << break_guid << "\n";
         ++region_num;
     }
 
