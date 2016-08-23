@@ -364,7 +364,26 @@ std::string IdleDetector::get_report() const {
     ss << std::setw(10) << "Starved:" << " ";
     ss << std::setw(10) << starved_time << " ";
 
-    ss << std::endl;
+    ss << std::endl << std::endl;
+
+    region_num = 0;
+    for(auto region : idle_regions) {
+        ATV_UNUSED(region);
+        ss << std::setw(6) << std::right << region_num << " ";
+        const auto & path = connections[region_num];
+        bool first_event = true;
+        for(const auto event : path) {
+            if(!first_event) {
+                ss << std::setw(6) << std::right << " " << " ";
+            }        
+            first_event = false;
+            const auto & obj = event->get_object();
+            ss << std::setw(30) << std::left << obj.get_name() << " ";
+            ss << std::setw(20) << std::left << obj.get_guid() << std::endl;
+        }
+        ++region_num;
+        ss << std::endl;
+    }
 
     return ss.str();
 }
