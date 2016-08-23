@@ -370,7 +370,9 @@ void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Conte
     const std::string guid = selected_event_start->get_object().get_guid();
     TraceData::event_ptr_list_t related_events(trace_data->get_events_for_guid(guid));
     std::sort(related_events.begin(), related_events.end(), TraceData::timestamp_ptr_compare());
+    std::cerr << std::endl;
     for(const auto event_ptr : related_events) {
+        std::cerr << event_ptr->to_string() << std::endl; 
         bool draw = false;
         cr->save();
         switch(event_ptr->get_event_type()) {

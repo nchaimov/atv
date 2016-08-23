@@ -38,8 +38,6 @@ void IdleDetector::setup() {
     end = offset + length;
     num_samples = (uint64_t)std::round(length/interval);
 
-    DEBUG_MSG("num samples: " << num_samples);
-
     occupancy.clear();
     occupancy.reserve(num_samples);
     occupancy.insert(occupancy.begin(), num_samples, 0);
@@ -64,24 +62,6 @@ void IdleDetector::calculate_occupancy() {
             current_time += interval;
         }
     }
-
-#ifdef ATV_DEBUG
-    std::stringstream ss;
-    ss << std::setw(8) << "Sample" << " ";
-    ss << std::setw(8) << "Time" << " ";
-    ss << std::setw(10) << "Occupancy\n";
-    uint64_t sample_num = 0;
-    for(auto sample : occupancy) {
-        ss << std::setw(8) << sample_num << " ";
-        ss << std::setw(8) << (sample_num * interval_sec) << " ";
-        ss << std::setw(10) << sample << "\n";
-        ++sample_num;
-    }
-    ss << std::setw(8) << "max" << " ";
-    ss << std::setw(10) << max_occupancy;
-    ss << "\n";
-    DEBUG_MSG(ss.str());
-#endif
 }
 
 void IdleDetector::find_idle_regions() {
@@ -130,11 +110,6 @@ void IdleDetector::find_idle_regions() {
 }
 
 void IdleDetector::find_region_boundary_events(const bool forward, const bool less_than, const bool from_start, const uint64_t threshold, IdleDetector::event_list_t & list) {
-    DEBUG_MSG("Forward:    " << forward);
-    DEBUG_MSG("Less Than:  " << less_than);
-    DEBUG_MSG("From Start: " << from_start);
-    DEBUG_MSG("Threshold:  " << threshold);
-
     if(!forward && from_start) {
         std::cerr << "ERROR: Scanning backwards from the start doesn't make sense." << std::endl;
         throw std::invalid_argument("!forward && from_start");
@@ -158,14 +133,11 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
         // Scan forward or backwards in the trace to find the earliest time
         // after the idle region or latest time within the idle region
         // where multiple events are running
-        DEBUG_MSG(std::endl << "Region " << region_num << ": " << global_time << " from " << first_time << " to " << last_time);
-        DEBUG_MSG("Region sample offsets: " << prev_full_occ_time << " " << region_end << " " << next_full_occ_time);
         uint64_t candidate_time = from_start ? first_time : global_time;
         const TraceData::Event * end_event = nullptr;
         uint64_t tasks_running = less_than ? std::numeric_limits<uint64_t>::min() : std::numeric_limits<uint64_t>::max();
         while( ((less_than && tasks_running < threshold) || (!less_than && tasks_running >= threshold))
                 && candidate_time <= last_time && candidate_time >= first_time) {
-            DEBUG_MSG("Candidate time: " << candidate_time);
             // Check how many tasks are running at candidate_time
             tasks_running = 0;
             uint64_t candidate_next_time = forward ? std::numeric_limits<uint64_t>::max() : std::numeric_limits<uint64_t>::min();
@@ -177,9 +149,7 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
                     // Is this task running?
                     const uint64_t this_start = task->first->get_time();
                     const uint64_t this_end   = task->second->get_time();
-                    DEBUG_MSG("loc " << loc << " start " << this_start << " end " << this_end << " " << task->first->get_object().get_name() << " " << task->first->get_object().get_guid());
                     if(this_start <= candidate_time && this_end >= candidate_time) {
-                        DEBUG_MSG("loc " << loc << " task running");
                         ++tasks_running;
                         candidate_event = &(*(task->first));
                     } else if(forward && this_start > candidate_time) {
@@ -187,26 +157,21 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
                         // as a potential next event start time.
                         if(this_start < candidate_next_time) {
                             candidate_next_time = this_start;
-                            DEBUG_MSG("Forward Start new candidate_next_time: " << candidate_next_time);
                         } 
                     } else if(!forward && this_start < candidate_time) {
                         if(this_start > candidate_next_time) {
                             candidate_next_time = this_start;    
-                            DEBUG_MSG("Backward Start new candidate_next_time: " << candidate_next_time);
                         }
                     }
                     
                     if(forward && this_end > candidate_time) {
                         // Also try its end time
-                        DEBUG_MSG("this_end: " << this_end << " candidate time: " << candidate_time);
                         if(this_end < candidate_next_time) {
                             candidate_next_time = this_end;
-                            DEBUG_MSG("Forward End new candidate_next_time: " << candidate_next_time);
                         }
                     } else if(!forward && this_end < candidate_time) {
                         if(this_end > candidate_next_time) {
                             candidate_next_time = this_end;    
-                            DEBUG_MSG("Backward End new candidate_next_time: " << candidate_next_time);
                         }
                     }
                     
@@ -219,15 +184,12 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
                     const uint64_t next_time = next->get_time();
                     if((forward && next_time < candidate_next_time) || (!forward && next_time > candidate_next_time)) {
                         candidate_next_time = next_time;
-                        DEBUG_MSG("loc " << loc << " next " << next->to_unformatted_string());
-                        DEBUG_MSG("Next/Prev New candidate_next_time: " << candidate_next_time);
                     }
                 } else {
                     std::cerr << "ERROR: No task found for candidate time." << std::endl;
                     throw std::runtime_error("Task not found in region.");
                 }
             }
-            DEBUG_MSG("Tasks running: " << tasks_running);
             if(tasks_running == 1) {
                 end_event = candidate_event;
             }
@@ -270,6 +232,69 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
     }
 }
 
+void IdleDetector::find_connection_between(const TraceData::Event * start_event,
+        const TraceData::Event * end_event) {
+    if(start_event == nullptr) {
+        std::cerr << "ERROR: start_event is null" << std::endl;
+        throw std::invalid_argument("start_event");
+    }
+    if(end_event == nullptr) {
+        std::cerr << "ERROR: end_event is null" << std::endl;
+        throw std::invalid_argument("end_event");
+    }
+    // Work backwards from end to start to find connection
+    const uint64_t start_event_time = start_event->get_time();
+    const TraceData::Event * current_event = end_event;
+    connections.emplace_back();
+    auto & path = connections.back();
+    path.emplace_back(end_event);
+    while(current_event != nullptr && current_event != start_event && current_event->get_time() > start_event_time) {
+        // When did the current event become runnable?
+        const std::string & guid = current_event->get_object().get_guid();
+        const auto & events = trace_data->get_events_for_guid(guid);
+        uint64_t runnable_time = TraceData::INVALID_TIME;
+        OTF2_LocationRef runnable_loc = TraceData::INVALID_LOCATION_REF;
+        for(const auto & event : events) {
+            if(event->get_event_type() == TraceData::EventType::TaskRunnable) {
+                // Check to make sure I'm the object rather than the parent
+                if(event->get_object().get_guid() == guid) {
+                    runnable_time = event->get_time();
+                    runnable_loc = event->get_loc();
+                    break;
+                }
+            }
+        }
+        if(runnable_time == TraceData::INVALID_TIME || runnable_loc == TraceData::INVALID_LOCATION_REF) {
+            std::cerr << "ERROR: Task " << guid << " has no associated TaskRunnable trace event" << std::endl;
+            throw std::runtime_error("Bad trace");
+        } else {
+            auto task_when_became_runnable = trace_data->get_task_iter_at_time(runnable_loc, runnable_time, true);
+            if(task_when_became_runnable) {
+                const TraceData::Event * next_event = &(*(task_when_became_runnable->first));
+                if(next_event == current_event) {
+                    std::cerr << "ERROR: next_event should not be identical to current_event" << std::endl;
+                    throw std::runtime_error("Iteration repeated");
+                }
+                current_event = next_event;
+                path.emplace_back(current_event);
+            } else {
+                throw std::runtime_error("Bad trace");
+            }
+        }
+
+    }
+}
+
+void IdleDetector::find_connections() {
+    uint64_t region_num = 0;
+    for(auto region : idle_regions) {
+        ATV_UNUSED(region);
+        const TraceData::Event * start_event = region_start_events[region_num];
+        const TraceData::Event * end_event   = region_end_events[region_num];
+        find_connection_between(start_event, end_event);
+        ++region_num;
+    }
+}
 
 void IdleDetector::analyze() {
     if(trace_data == nullptr) {
@@ -280,6 +305,7 @@ void IdleDetector::analyze() {
     find_idle_regions();
     find_region_boundary_events(true,  false, true,  occupancy_threshold, region_start_events);
     find_region_boundary_events(true,  true,  false, occupancy_threshold, region_end_events);
+    find_connections();
 }
 
 std::string IdleDetector::get_report() const {

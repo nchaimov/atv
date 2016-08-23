@@ -417,6 +417,7 @@ public:
     static constexpr OTF2_LocationGroupRef INVALID_LOCATION_GROUP_REF = std::numeric_limits<OTF2_LocationGroupRef>::max();
     static constexpr OTF2_RegionRef INVALID_REGION_REF = std::numeric_limits<OTF2_RegionRef>::max();
     static constexpr uint64_t INVALID_SIZE = std::numeric_limits<uint64_t>::max();
+    static constexpr uint64_t INVALID_TIME = std::numeric_limits<uint64_t>::max();
     static constexpr uint32_t INVALID_LINE = std::numeric_limits<uint32_t>::max();
 
     TraceData();

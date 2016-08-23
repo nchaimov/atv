@@ -29,11 +29,15 @@ protected:
     using event_list_t = std::vector<const TraceData::Event*>;
     event_list_t region_start_events;
     event_list_t region_end_events;
+    using events_list_t = std::vector<event_list_t>;
+    events_list_t connections;
 
     void setup();
     void calculate_occupancy();
     void find_idle_regions();
     void find_region_boundary_events(const bool forward, const bool decreasing, const bool from_start, const uint64_t threshold, event_list_t & list);
+    void find_connection_between(const TraceData::Event * start_event, const TraceData::Event * end_event);
+    void find_connections();
 
 public:
     IdleDetector(TraceData * trace_data, double interval_sec, uint64_t length_threshold, uint64_t occupancy_threshold);
