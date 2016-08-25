@@ -56,7 +56,7 @@ ATVStatus TraceReader::read_traces(std::function<void(uint64_t)> progress_callba
         uint64_t num_global_locations;
         status = OTF2_Reader_GetNumberOfLocations(reader, &num_global_locations);
         check_status(status, "OTF2_Reader_GetNumberOfLocations");
-        std::cout << "num global locations: " << num_global_locations << std::endl;
+        std::cerr << "num global locations: " << num_global_locations << std::endl;
 
         void * user_data = callbacks->get_user_data();
 
@@ -74,7 +74,7 @@ ATVStatus TraceReader::read_traces(std::function<void(uint64_t)> progress_callba
         uint64_t definitions_read;
         status = OTF2_Reader_ReadAllGlobalDefinitions(reader, global_def_reader, &definitions_read);
         check_status(status, "OTF2_Reader_ReadAllGlobalDefinitions");
-        std::cout << "global defs read: " << definitions_read << std::endl;
+        std::cerr << "global defs read: " << definitions_read << std::endl;
 
         // Cleanup
         status = OTF2_Reader_CloseGlobalDefReader(reader, global_def_reader);
@@ -95,7 +95,7 @@ ATVStatus TraceReader::read_traces(std::function<void(uint64_t)> progress_callba
             uint64_t events_read;
             status = OTF2_Reader_ReadAllGlobalEvents(reader, global_evt_reader, &events_read);
             check_status(status, "OTF2_Reader_ReadAllGlobalEvents");
-            std::cout << "global evts read: " << events_read << std::endl;
+            std::cerr << "global evts read: " << events_read << std::endl;
 
             // Cleanup
             status = OTF2_Reader_CloseGlobalEvtReader(reader, global_evt_reader);
@@ -123,7 +123,7 @@ ATVStatus TraceReader::read_traces(std::function<void(uint64_t)> progress_callba
             uint64_t local_defs_read;
             status = OTF2_Reader_ReadAllLocalDefinitions(reader, def_reader, &local_defs_read);
             check_status(status, "OTF2_Reader_ReadAllLocalDefinitions");
-            std::cout << "loc: " << loc << ", local defs read: " << local_defs_read << std::endl;
+            std::cerr << "loc: " << loc << ", local defs read: " << local_defs_read << std::endl;
             status = OTF2_Reader_CloseDefReader(reader, def_reader);
             check_status(status, "OTF2_Reader_CloseDefReader");
 
@@ -145,7 +145,7 @@ ATVStatus TraceReader::read_traces(std::function<void(uint64_t)> progress_callba
             uint64_t local_evts_read;
             status = OTF2_Reader_ReadAllLocalEvents(reader, evt_reader, &local_evts_read);
             check_status(status, "OTF2_Reader_ReadAllLocalEvents");
-            std::cout << "loc: " << loc << ", local evts read: " << local_evts_read << std::endl;
+            std::cerr << "loc: " << loc << ", local evts read: " << local_evts_read << std::endl;
             status = OTF2_Reader_CloseEvtReader(reader, evt_reader);
             check_status(status, "OTF2_Reader_CloseEvtReader");
 

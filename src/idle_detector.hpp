@@ -47,10 +47,11 @@ public:
     void analyze();
     std::string get_report() const;
 
-    const occupancy_list_t & get_occupancy() const { return occupancy; } ;
-    const idle_region_list_t  & get_idle_regions() const { return idle_regions; } ;
-    const event_list_t & get_region_start_events() const { return region_start_events; } ;
-    const event_list_t & get_region_end_events() const { return region_end_events; } ;
+    const occupancy_list_t & get_occupancy() const { return occupancy; };
+    const idle_region_list_t  & get_idle_regions() const { return idle_regions; }; 
+    const event_list_t & get_region_start_events() const { return region_start_events; };
+    const event_list_t & get_region_end_events() const { return region_end_events; };
+    const events_list_t & get_connections() const { return connections; };
 
 };
 

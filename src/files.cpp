@@ -3,6 +3,7 @@
 #include <vector>
 #include <list>
 #include <cstdlib>
+#include <algorithm>
 
 #include <boost/program_options.hpp> 
 #define BOOST_FILESYSTEM_VERSION 3
@@ -78,6 +79,7 @@ TraceReader::locations_t get_locations(std::string anchor) {
             locations.push_back(loc);
         }
     }
+    std::sort(locations.begin(), locations.end());
     
     return locations;
 

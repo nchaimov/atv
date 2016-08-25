@@ -134,9 +134,10 @@ void TraceArea::draw_separators(const Cairo::RefPtr<Cairo::Context>& cr) {
 void TraceArea::draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->save();
     uint64_t global_offset = trace_data->get_global_offset();
-    for(uint64_t loc = 0; loc < num_locs; ++loc) {
+    for(uint64_t loc_ref = 0; loc_ref < num_locs; ++loc_ref) {
         uint64_t last_enter = 0;
-        const double top_of_row = (loc*height_per_loc) + ((loc-1.0)*spacing_between_locs)  + 10.0;
+        const double top_of_row = (loc_ref*height_per_loc) + ((loc_ref-1.0)*spacing_between_locs)  + 10.0;
+        OTF2_LocationRef loc = trace_data->get_location_ref(loc_ref);
         const auto & events = trace_data->get_events(loc);
         auto start_iterator = zoom ? trace_data->get_compute_event_at_time(loc, zoom_start+global_offset) : events.begin();
         auto stop_iterator = zoom ? trace_data->get_compute_event_at_time(loc, zoom_stop+global_offset) : events.end();
@@ -370,9 +371,7 @@ void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Conte
     const std::string guid = selected_event_start->get_object().get_guid();
     TraceData::event_ptr_list_t related_events(trace_data->get_events_for_guid(guid));
     std::sort(related_events.begin(), related_events.end(), TraceData::timestamp_ptr_compare());
-    std::cerr << std::endl;
     for(const auto event_ptr : related_events) {
-        std::cerr << event_ptr->to_string() << std::endl; 
         bool draw = false;
         cr->save();
         switch(event_ptr->get_event_type()) {
@@ -409,10 +408,12 @@ void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Conte
             // Draw from bottom of beginning of selected enter event to center of task create
             const uint64_t global_offset = trace_data->get_global_offset();
             const double enter_time = selected_event_start->get_time() - global_offset;
-            const uint64_t enter_loc = selected_event_start->get_loc();
+            const OTF2_LocationRef enter_loc_ref = selected_event_start->get_loc();
+            const uint64_t enter_loc = trace_data->get_location_offset(enter_loc_ref);
             const double enter_loc_pos = (enter_loc*height_per_loc) + ((enter_loc-1.0)*spacing_between_locs)  + 10.0 + (height_per_loc * 0.5);
             const double evt_time = event_ptr->get_time() - global_offset;
-            const uint64_t evt_loc = event_ptr->get_loc();
+            const OTF2_LocationRef evt_loc_ref = event_ptr->get_loc();
+            const uint64_t evt_loc = trace_data->get_location_offset(evt_loc_ref);
             const double evt_loc_pos = (evt_loc*height_per_loc) + ((evt_loc-1.0)*spacing_between_locs)  + 10.0 + (height_per_loc * 0.5);
             cr->move_to(enter_time, enter_loc_pos);
             cr->line_to(evt_time, evt_loc_pos);
@@ -489,7 +490,8 @@ void TraceArea::draw_selected_guid_events(const Cairo::RefPtr<Cairo::Context>&cr
             break;
         }
         if(draw) {
-            const uint64_t evt_loc = event_ptr->get_loc();
+            const OTF2_LocationRef evt_loc_ref = event_ptr->get_loc();
+            const uint64_t evt_loc = trace_data->get_location_offset(evt_loc_ref);
             const double evt_loc_pos = (evt_loc*height_per_loc) + ((evt_loc-1.0)*spacing_between_locs)  + 10.0 + (height_per_loc * 0.4);
             const double evt_loc_pos_bot = (evt_loc*height_per_loc) + ((evt_loc-1.0)*spacing_between_locs)  + 10.0 + (height_per_loc * 0.6);
             cr->save();
@@ -639,7 +641,8 @@ void TraceArea::set_task_label_for_coord(double x, double y) {
         uint64_t loc = location_for_coord(y);
         if(loc < num_locs && x > 0 && x < trace_data->get_trace_length()) {
             const uint64_t time = x + trace_data->get_global_offset();
-            std::string name = trace_data->get_task_name_at_time(loc, time, true, true, true);
+            const OTF2_LocationRef loc_ref = trace_data->get_location_ref(loc);
+            std::string name = trace_data->get_task_name_at_time(loc_ref, time, true, true, true);
             std::stringstream ss;
             ss << loc << ": " << name;
             main_window->set_task_label_text(ss.str());
@@ -661,7 +664,8 @@ void TraceArea::select_event_under_cursor(double x, double y) {
     matrix.transform_point(x, y);
     uint64_t loc = location_for_coord(y);
     if(loc < num_locs && x > 0 && x < trace_data->get_trace_length()) {
-        auto tasks = trace_data->get_task_at_time(loc, x + trace_data->get_global_offset());
+        const OTF2_LocationRef loc_ref = trace_data->get_location_ref(loc);
+        auto tasks = trace_data->get_task_at_time(loc_ref, x + trace_data->get_global_offset());
         if(tasks) {
             selected_event_start = &(tasks->first);
             main_window->set_selected_event(selected_event_start);

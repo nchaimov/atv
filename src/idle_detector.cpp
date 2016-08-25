@@ -45,8 +45,7 @@ void IdleDetector::setup() {
 
 void IdleDetector::calculate_occupancy() {
     // Get occupancy for each sample point for each location
-    const OTF2_LocationRef num_locs = trace_data->get_locations().size();
-    for(OTF2_LocationRef loc = 0; loc < num_locs; ++loc) {
+    for(OTF2_LocationRef loc : trace_data->get_location_refs()) {
         double current_time = start;
         for(uint64_t sample = 0; sample < num_samples; ++sample) {
             TraceData::maybe_event_pair_t task = 
@@ -65,6 +64,7 @@ void IdleDetector::calculate_occupancy() {
 }
 
 void IdleDetector::find_idle_regions() {
+    uint64_t region_num = 0;
     // Find candidate end samples with occupancy less than threshold
     std::vector<uint64_t> candidate_ends;
     for(uint64_t sample = 1; sample < num_samples-1; ++sample) {
@@ -92,6 +92,14 @@ void IdleDetector::find_idle_regions() {
                 }
             }
             candidate_regions.push_back(std::make_tuple(candidate_start, candidate_end, next_full, occupancy[candidate_start], occupancy[candidate_end], occupancy[next_full]));
+            //std::cerr << std::setw(10) << std::right << region_num << " ";
+            //std::cerr << std::setw(11) << std::right << candidate_start << " ";
+            //std::cerr << std::setw(11) << std::right << candidate_end << " ";
+            //std::cerr << std::setw(10) << std::right << next_full << " ";
+            //std::cerr << std::setw(10) << std::right << occupancy[candidate_start] << " ";
+            //std::cerr << std::setw(10) << std::right << occupancy[candidate_end] << " ";
+            //std::cerr << std::setw(10) << std::right << occupancy[next_full] << "\n";
+            ++region_num;
         }
     }
 
@@ -114,9 +122,9 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
         std::cerr << "ERROR: Scanning backwards from the start doesn't make sense." << std::endl;
         throw std::invalid_argument("!forward && from_start");
     }
-    const OTF2_LocationRef num_locs = trace_data->get_locations().size();
     uint64_t region_num = 0;
     for(const region_t & region : idle_regions) {
+        //std::cerr << "Processing region " << region_num << std::endl;
         const uint64_t region_end = std::get<1>(region);
         const uint64_t rel_time = (uint64_t)std::round(region_end * interval);
         const uint64_t offset = trace_data->get_global_offset();
@@ -142,7 +150,7 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
             tasks_running = 0;
             uint64_t candidate_next_time = forward ? std::numeric_limits<uint64_t>::max() : std::numeric_limits<uint64_t>::min();
             const TraceData::Event * candidate_event = nullptr;
-            for(uint64_t loc = 0; loc < num_locs; ++loc) {
+            for(OTF2_LocationRef loc : trace_data->get_location_refs()) {
                 TraceData::maybe_event_iter_pair_t task = 
                     trace_data->get_task_iter_at_time(loc, candidate_time, true);
                 if(task) {

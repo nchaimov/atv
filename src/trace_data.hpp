@@ -10,6 +10,8 @@
 #include <utility>
 #include <sstream>
 #include <iomanip>
+#include <set>
+#include <initializer_list>
 
 #include <sparsehash/dense_hash_map>
 
@@ -377,6 +379,9 @@ public:
     location_map_t location_map;
     Location invalid_location;
 
+    using location_ref_list_t = std::vector<OTF2_LocationRef>;
+    location_ref_list_t location_ref_list;
+
     using region_map_t = std::unordered_map<OTF2_RegionRef, Region>;
     using regions_map_t = std::map<OTF2_LocationRef, region_map_t>;
     regions_map_t regions_map;
@@ -408,6 +413,9 @@ public:
     guid_type_map_t guid_type_map;
 
     std::map<OTF2_LocationRef, OTF2_RegionRef> last_entered_map;
+
+    bool limit_events = false;
+    std::set<EventType> guid_map_event_types;
 
 public:
 
@@ -442,6 +450,9 @@ public:
     void put_location(const OTF2_LocationRef loc_ref, const OTF2_StringRef name, const OTF2_LocationType type, const uint64_t num_events, const OTF2_LocationGroupRef parent);
     const Location & get_location(const OTF2_LocationRef loc_ref);
     const location_map_t & get_locations() const;
+    const location_ref_list_t & get_location_refs() const;
+    OTF2_LocationRef get_location_ref(location_ref_list_t::size_type offset) const;
+    location_ref_list_t::size_type get_location_offset(OTF2_LocationRef) const;
 
     void put_region(const OTF2_LocationRef loc, const OTF2_RegionRef self, const OTF2_StringRef name, const OTF2_StringRef guid, const OTF2_StringRef desc, const OTF2_RegionRole role, const OTF2_Paradigm paradigm, const OTF2_RegionFlag region_flag, const OTF2_StringRef source_file, const uint32_t begin_line_number, const uint32_t end_line_number);
     const Region & get_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef region_ref);
@@ -474,6 +485,8 @@ public:
 
     OTF2_RegionRef get_last_entered(OTF2_LocationRef loc_ref);
     void set_last_entered(OTF2_LocationRef loc_ref, OTF2_RegionRef region);
+
+    void set_selective_guid_map_events(std::initializer_list<EventType> event_types);
 };
 
 #endif // TRACE_DATA_HPP

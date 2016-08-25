@@ -281,7 +281,9 @@ void MainWindow::update_status(uint64_t num_locs) {
         Gtk::Main::iteration(true);
         new_data_signal.emit(num_locs, callbacks.get_trace_data());
     }
-    Gtk::Main::iteration(true);
+    while(Gtk::Main::events_pending()) {
+        Gtk::Main::iteration(true);
+    }
 }
 
 

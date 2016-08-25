@@ -155,6 +155,7 @@ const TraceData::LocationGroup & TraceData::Location::get_parent() const {
 void TraceData::put_location(const OTF2_LocationRef loc_ref, const OTF2_StringRef name, const OTF2_LocationType type, const uint64_t num_events, const OTF2_LocationGroupRef parent) {
     location_map.emplace(std::piecewise_construct, std::forward_as_tuple(loc_ref), std::forward_as_tuple(this, loc_ref, name, type, num_events, parent));
     events_map[loc_ref].reserve(num_events);
+    location_ref_list.emplace_back(loc_ref);
 }
 
 const TraceData::Location & TraceData::get_location(const OTF2_LocationRef loc_ref) {
@@ -169,6 +170,27 @@ const TraceData::location_map_t & TraceData::get_locations() const {
     return location_map;
 }
 
+const TraceData::location_ref_list_t & TraceData::get_location_refs() const {
+    return location_ref_list;
+}
+
+OTF2_LocationRef TraceData::get_location_ref(TraceData::location_ref_list_t::size_type offset) const {
+    if(!(offset < location_ref_list.size())) {
+        return INVALID_LOCATION_REF;
+    }
+    return location_ref_list[offset];
+}
+
+TraceData::location_ref_list_t::size_type TraceData::get_location_offset(OTF2_LocationRef loc_ref) const {
+    const auto begin = location_ref_list.begin();
+    const auto end = location_ref_list.end();
+    TraceData::location_ref_list_t::const_iterator iter = std::lower_bound(begin, end, loc_ref);
+    TraceData::location_ref_list_t::size_type dist = std::distance(begin, iter);
+    if(location_ref_list[dist] != loc_ref) {
+        throw std::invalid_argument("No such loc_ref in get_location_offset");
+    }
+    return dist;
+}
 
 const TraceData::SystemTreeNode & TraceData::find_system_tree_node(const OTF2_SystemTreeNodeRef node_ref) {
     for(const auto & loc_pair : nodes_map) {
@@ -272,6 +294,11 @@ void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_
     vect.emplace_back(this, loc_ref, event_type, time, event_position, object, subject, parent, size, seq_id); 
     event = &(vect.back());
 
+    if(limit_events) {
+        if(guid_map_event_types.find(event_type) == guid_map_event_types.end()) {
+            return;
+        }
+    }
 
     if(object != INVALID_REGION_REF) {
         const std::string & object_guid = event->get_object().get_guid();
@@ -457,5 +484,16 @@ OTF2_RegionRef TraceData::get_last_entered(OTF2_LocationRef loc_ref) {
 
 void TraceData::set_last_entered(OTF2_LocationRef loc_ref, OTF2_RegionRef region) {
     last_entered_map[loc_ref] = region;
+}
+
+
+void TraceData::set_selective_guid_map_events(std::initializer_list<TraceData::EventType> event_types) {
+    guid_map_event_types.clear();
+    if(event_types.size() == 0) {
+        limit_events = false;
+    } else {
+        guid_map_event_types.insert(event_types);
+        limit_events = true;
+    }
 }
 
