@@ -11,13 +11,13 @@ add_library(callbacks OBJECT ${CALLBACK_FILES})
 set(READER_FILES files.cpp trace_reader.cpp trace_data.cpp)
 add_library(trace_reader OBJECT ${READER_FILES})
 
-set(GUI_FILES main_window.cpp trace_area.cpp related_list.cpp)
+set(GUI_FILES main_window.cpp trace_area.cpp related_list.cpp idle_list.cpp)
 add_library(atv_gui OBJECT ${GUI_FILES})        
 
 set(ANALYSIS_FILES idle_detector.cpp)
 add_library(analysis OBJECT ${ANALYSIS_FILES})
 
-add_executable (atv main.cpp $<TARGET_OBJECTS:callbacks> $<TARGET_OBJECTS:trace_reader> $<TARGET_OBJECTS:atv_gui> )
+add_executable (atv main.cpp $<TARGET_OBJECTS:callbacks> $<TARGET_OBJECTS:trace_reader> $<TARGET_OBJECTS:atv_gui> $<TARGET_OBJECTS:analysis> )
 target_link_libraries(atv ${LIBS})
 
 add_executable (atv_analyze main_analyze.cpp $<TARGET_OBJECTS:analysis> $<TARGET_OBJECTS:callbacks> $<TARGET_OBJECTS:trace_reader>)

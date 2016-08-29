@@ -8,6 +8,13 @@
 
 class IdleDetector {
 
+public:
+    using occupancy_list_t = std::vector<uint64_t>;
+    using region_t = std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>;
+    using idle_region_list_t = std::vector<region_t>;
+    using event_list_t = std::vector<const TraceData::Event*>;
+    using events_list_t = std::vector<event_list_t>;
+
 protected:
     TraceData * trace_data;
     double interval_sec;
@@ -19,17 +26,12 @@ protected:
     double end;
     uint64_t num_samples;
 
-    using occupancy_list_t = std::vector<uint64_t>;
     occupancy_list_t occupancy;
-    using region_t = std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>;
-    using idle_region_list_t = std::vector<region_t>;
     idle_region_list_t idle_regions;
     uint32_t max_occupancy = 0;
     double starved_time = 0.0;
-    using event_list_t = std::vector<const TraceData::Event*>;
     event_list_t region_start_events;
     event_list_t region_end_events;
-    using events_list_t = std::vector<event_list_t>;
     events_list_t connections;
 
     void setup();
@@ -52,6 +54,9 @@ public:
     const event_list_t & get_region_start_events() const { return region_start_events; };
     const event_list_t & get_region_end_events() const { return region_end_events; };
     const events_list_t & get_connections() const { return connections; };
+    const event_list_t & get_connections_at(uint64_t region) const { return connections.at(region); };
+
+    double get_interval_sec() const { return interval_sec; };
 
 };
 

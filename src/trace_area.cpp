@@ -133,7 +133,7 @@ void TraceArea::draw_separators(const Cairo::RefPtr<Cairo::Context>& cr) {
 
 void TraceArea::draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->save();
-    uint64_t global_offset = trace_data->get_global_offset();
+    const uint64_t global_offset = trace_data->get_global_offset();
     for(uint64_t loc_ref = 0; loc_ref < num_locs; ++loc_ref) {
         uint64_t last_enter = 0;
         const double top_of_row = (loc_ref*height_per_loc) + ((loc_ref-1.0)*spacing_between_locs)  + 10.0;
@@ -231,94 +231,7 @@ void TraceArea::draw_into_local_surface() {
 }
 
 void TraceArea::draw_concurrency(const Cairo::RefPtr<Cairo::Context>& cr) {
-    // This doesn't work yet
-#if 0
-    uint64_t bins = (trace_data->get_trace_length() / trace_data->get_timer_resolution()) * 10;
-    std::cerr << bins << std::endl;
-    // divide into bins
-    uint64_t bin_width = trace_data->get_trace_length() / bins;
-    // get EDTs in each category 
-    std::vector<double> created(bins);
-    std::vector<double> eligible(bins);
-    std::vector<double> running(bins);
-    for(OTF2_LocationRef loc = 0; loc < num_locs; ++loc) {
-        std::cerr << "Concurrency for loc " << loc << std::endl;
-        const auto & compute_events = trace_data->get_compute_events(loc);
-        const auto & other_events = trace_data->get_other_events(loc);
-        auto compute_iter = compute_events.begin();
-        auto other_iter = other_events.begin();
-        int64_t bin_created = 0;
-        int64_t bin_eligible = 0;
-        int64_t bin_running = 0;
-        bool compute_done = false;
-        bool other_done = false;
-        uint64_t current_bin = 0;
-        OTF2_TimeStamp end_time = compute_iter->get_time() + bin_width;
-        while(!compute_done || !other_done) {
-            OTF2_TimeStamp current_time = 0;
-            // Process compute events, if there are still any
-            if(!compute_done) {
-                switch(compute_iter->get_event_type()) {
-                    case TraceData::EventType::Enter:
-                        --bin_eligible;
-                        ++bin_running;
-                        break;
-                    case TraceData::EventType::Leave:
-                        --bin_running;
-                        break;
-                    default:
-                        break;
-                }
-                current_time = compute_iter->get_time();
-                ++compute_iter;
-                if(compute_iter == compute_events.end()) {
-                    compute_done = true;
-                }
-            }
 
-            // Process other events, if there are still any
-            if(!other_done) {
-                switch(other_iter->get_event_type()) {
-                    case TraceData::EventType::TaskCreate:
-                        ++bin_created;
-                        break;
-                    case TraceData::EventType::TaskRunnable:
-                        --bin_created;
-                        ++bin_eligible;
-                        break;
-                    default:
-                        break;
-                }
-                current_time = std::max(current_time, other_iter->get_time());
-                ++other_iter;
-                if(other_iter == other_events.end()) {
-                    other_done = true;
-                }
-            }
-
-            if(current_time >= end_time) {
-                // End of a bin
-                // Store results
-                created[current_bin] += bin_created;
-                eligible[current_bin] += bin_eligible;
-                running[current_bin] += bin_running;
-                end_time += bin_width;
-                ++current_bin;
-            }
-
-        } // end while loop processing events
-
-    } // end for loop processing locations
-
-    std::cout << std::setw(12) << "Bin" << std::setw(12) << "Created" << std::setw(12) << "Eligible" << std::setw(12) << "Running" << std::endl; 
-    for(uint64_t bin = 0; bin < bins; ++bin) {
-        std::cout << std::setw(12) << bin;
-        std::cout << std::setw(12) << created[bin];
-        std::cout << std::setw(12) << eligible[bin];
-        std::cout << std::setw(12) << running[bin];
-        std::cout << std::endl; 
-    }
-#endif
 } // end draw_concurrency
 
 
@@ -337,7 +250,7 @@ void TraceArea::draw_selected_task(const Cairo::RefPtr<Cairo::Context>& cr) {
     if(selected_event_start != nullptr && selected_event_end != nullptr) {
         set_scale(cr);
         const double top_of_row = (selected_loc*height_per_loc) + ((selected_loc-1.0)*spacing_between_locs)  + 10.0;
-        uint64_t global_offset = trace_data->get_global_offset();
+        const uint64_t global_offset = trace_data->get_global_offset();
         const OTF2_TimeStamp enter = selected_event_start->get_time() - global_offset;      
         const OTF2_TimeStamp leave = selected_event_end->get_time() - global_offset;   
         const double rect_width = leave - enter;
@@ -345,19 +258,12 @@ void TraceArea::draw_selected_task(const Cairo::RefPtr<Cairo::Context>& cr) {
         cr->rectangle(enter, top_of_row, rect_width, height_per_loc);
         cr->fill();
         cr->set_source_rgb(0.0, 1.0, 0.3);
-        double unused = 0.0;
-        double line_width = 2.0;
-        cr->device_to_user_distance(unused, line_width);
-        // convert desired line_width in pixels to user space
-        cr->set_line_width(line_width);
         cr->rectangle(enter, top_of_row, rect_width, height_per_loc);
+        cr->save();
+        cr->set_identity_matrix();
+        cr->set_line_width(2.0);
         cr->stroke();
-        line_width = 2.0;
-        cr->device_to_user_distance(line_width, unused);
-        cr->rectangle(enter, top_of_row, line_width, height_per_loc);
-        cr->fill();
-        cr->rectangle(leave, top_of_row, line_width, height_per_loc);
-        cr->fill();
+        cr->restore();
         draw_selected_task_dependencies(cr);
     }
     cr->restore();
@@ -371,7 +277,13 @@ void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Conte
     const std::string guid = selected_event_start->get_object().get_guid();
     TraceData::event_ptr_list_t related_events(trace_data->get_events_for_guid(guid));
     std::sort(related_events.begin(), related_events.end(), TraceData::timestamp_ptr_compare());
+    const uint64_t global_offset = trace_data->get_global_offset();
     for(const auto event_ptr : related_events) {
+        const double enter_time = selected_event_start->get_time() - global_offset;
+        const double evt_time = event_ptr->get_time() - global_offset;
+        if(evt_time > enter_time) {
+            continue;
+        }
         bool draw = false;
         cr->save();
         switch(event_ptr->get_event_type()) {
@@ -406,12 +318,9 @@ void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Conte
         }
         if(draw) {
             // Draw from bottom of beginning of selected enter event to center of task create
-            const uint64_t global_offset = trace_data->get_global_offset();
-            const double enter_time = selected_event_start->get_time() - global_offset;
             const OTF2_LocationRef enter_loc_ref = selected_event_start->get_loc();
             const uint64_t enter_loc = trace_data->get_location_offset(enter_loc_ref);
             const double enter_loc_pos = (enter_loc*height_per_loc) + ((enter_loc-1.0)*spacing_between_locs)  + 10.0 + (height_per_loc * 0.5);
-            const double evt_time = event_ptr->get_time() - global_offset;
             const OTF2_LocationRef evt_loc_ref = event_ptr->get_loc();
             const uint64_t evt_loc = trace_data->get_location_offset(evt_loc_ref);
             const double evt_loc_pos = (evt_loc*height_per_loc) + ((evt_loc-1.0)*spacing_between_locs)  + 10.0 + (height_per_loc * 0.5);
@@ -426,6 +335,7 @@ void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Conte
         cr->restore();
     }
 }
+
 
 void TraceArea::draw_selected_guid_events(const Cairo::RefPtr<Cairo::Context>&cr) {
     cr->save();
@@ -700,9 +610,31 @@ void TraceArea::set_position(const double position) {
     redraw(false);
 }
 
+void TraceArea::set_zoom_range(const double start, const double stop) {
+    zoom_start = start;
+    zoom_stop = stop;
+    zoom = true;
+    redraw();
+}
+
 
 void TraceArea::set_selected_related_guid(const std::string & guid) {
+    clear_selected_connections();
     selected_related_guid = guid;
     redraw();
 }
 
+void TraceArea::set_selected_connections(const IdleDetector::event_list_t & event_list) {
+    selected_connections = event_list;    
+    if(!selected_connections.empty()) {
+        uint64_t global_offset = trace_data->get_global_offset();
+        const uint64_t last_event_time  = selected_connections.front()->get_time() - global_offset;
+        const uint64_t first_event_time = selected_connections.back()->get_time() - global_offset;
+        set_zoom_range(first_event_time, last_event_time);
+        zoom_out();
+    }
+}
+
+void TraceArea::clear_selected_connections() {
+    selected_connections.clear();
+}

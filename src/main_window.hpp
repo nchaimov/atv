@@ -16,6 +16,7 @@
 #include <gtkmm/paned.h>
 #include <gtkmm/scrollbar.h>
 #include <gtkmm/scrolledwindow.h>
+#include <gtkmm/notebook.h>
 
 #include "status.hpp"
 #include "trace_reader.hpp"
@@ -23,6 +24,7 @@
 #include "callbacks.hpp"
 #include "trace_area.hpp"
 #include "related_list.hpp"
+#include "idle_list.hpp"
 
 
 class MainWindow : public Gtk::ApplicationWindow {
@@ -41,16 +43,20 @@ public:
     void set_scroll_position(const double position, const bool should_redraw = true);
     void set_scroll_allowed(const bool allowed);
     void set_selected_related_guid(const std::string & guid);
+    void set_selected_connections(const IdleDetector::event_list_t & event_list);
+    void clear_selected_connections();
 
 protected:
     Gtk::VBox box;
     Gtk::VBox trace_box;
     Gtk::Paned pane;
-    Gtk::ScrolledWindow scroll;
+    Gtk::ScrolledWindow related_scroll;
+    Gtk::ScrolledWindow idle_scroll;
     Gtk::Separator sep;
     Gtk::ProgressBar load_progress;
     TraceArea trace_area;
     RelatedList related_list;
+    IdleList idle_list;
     Glib::RefPtr<Gtk::Builder> builder;
     Gtk::Toolbar * top_bar;
     Gtk::Toolbar * bottom_bar;
@@ -58,6 +64,7 @@ protected:
     Gtk::Label * time_label;
     Gtk::ComboBox * combobox;
     Gtk::Scrollbar scrollbar;
+    Gtk::Notebook side_notebook;
 
     new_data_signal_t new_data_signal;
 

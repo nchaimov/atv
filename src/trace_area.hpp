@@ -10,6 +10,7 @@
 #include <sigc++/connection.h>
 
 #include "trace_data.hpp"
+#include "idle_detector.hpp"
 
 class MainWindow;
 
@@ -28,6 +29,9 @@ public:
     void zoom_out();
     void set_position(const double position);
     void set_selected_related_guid(const std::string & guid);
+    void set_selected_connections(const IdleDetector::event_list_t & event_list);
+    void clear_selected_connections();
+    void set_zoom_range(const double start, const double end);
 
     enum class Mode {
         TaskExecution,
@@ -57,6 +61,7 @@ protected:
     const TraceData::Event * selected_event_start = nullptr;
     const TraceData::Event * selected_event_end = nullptr;
     std::string selected_related_guid;
+    IdleDetector::event_list_t selected_connections;
     Mode mode = Mode::TaskExecution;
 
     inline void set_create_color(const Cairo::RefPtr<Cairo::Context>& cr);

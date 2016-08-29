@@ -12,7 +12,7 @@
 #include <gtkmm/combobox.h>
 
 MainWindow::MainWindow(const std::string & filename, const TraceReader::locations_t & locations)
-        : trace_area(this), related_list(this), filename(filename),
+        : trace_area(this), related_list(this), idle_list(this), filename(filename),
           locations(locations), redraw_on_scroll(true) {
    set_title("APEX Trace Viewer");
    set_border_width(10);
@@ -24,6 +24,7 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    signal_map_event().connect(sigc::mem_fun(*this, &MainWindow::setup_load_traces));
    new_data_event().connect(sigc::mem_fun(related_list, &RelatedList::on_new_data));
    new_data_event().connect(sigc::mem_fun(trace_area, &TraceArea::on_new_data));
+   new_data_event().connect(sigc::mem_fun(idle_list, &IdleList::on_new_data));
    new_data_event().connect(sigc::mem_fun(*this, &MainWindow::on_new_data));
    pane.property_position().signal_changed().connect(sigc::mem_fun(*this, &MainWindow::on_pane_resize));
    scrollbar.get_adjustment()->signal_value_changed().connect(sigc::mem_fun(*this, &MainWindow::on_scroll_value_changed));
@@ -41,8 +42,15 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    related_list.set_size_request(160, -1);
    related_list.set_vexpand(true);
    related_list.set_hexpand(true);
-   scroll.add(related_list);
-   scroll.set_size_request(160, -1);
+   related_scroll.add(related_list);
+   related_scroll.set_size_request(160, -1);
+   idle_list.set_size_request(160, -1);
+   idle_list.set_vexpand(true);
+   idle_list.set_hexpand(true);
+   idle_scroll.add(idle_list);
+   idle_scroll.set_size_request(160, -1);
+   side_notebook.append_page(related_scroll, "Related");
+   side_notebook.append_page(idle_scroll, "Idle Regions");
    trace_box.set_homogeneous(false);
    trace_box.pack_start(trace_area, Gtk::PACK_EXPAND_WIDGET);
    trace_box.set_vexpand(false);
@@ -50,7 +58,7 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    scrollbar.set_slider_size_fixed(false);
    trace_box.pack_start(scrollbar, Gtk::PACK_SHRINK);
    pane.pack1(trace_box, false, false);
-   pane.pack2(scroll,false, false );
+   pane.pack2(side_notebook,false, false );
    pane.set_vexpand(true);
    pane.set_hexpand(true);
 
@@ -69,7 +77,10 @@ MainWindow::MainWindow(const std::string & filename, const TraceReader::location
    scrollbar.show();
    trace_box.show();
    related_list.show();
-   scroll.show();
+   related_scroll.show();
+   idle_list.show();
+   idle_scroll.show();
+   side_notebook.show();
    pane.show();
    box.show();
 }
@@ -384,3 +395,11 @@ void MainWindow::set_selected_related_guid(const std::string & guid) {
     trace_area.set_selected_related_guid(guid);
 }
 
+
+void MainWindow::set_selected_connections(const IdleDetector::event_list_t & event_list) {
+    trace_area.set_selected_connections(event_list);
+}
+
+void MainWindow::clear_selected_connections() {
+    trace_area.clear_selected_connections();
+}
