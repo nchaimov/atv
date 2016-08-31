@@ -156,6 +156,7 @@ void TraceData::put_location(const OTF2_LocationRef loc_ref, const OTF2_StringRe
     location_map.emplace(std::piecewise_construct, std::forward_as_tuple(loc_ref), std::forward_as_tuple(this, loc_ref, name, type, num_events, parent));
     events_map[loc_ref].reserve(num_events);
     location_ref_list.emplace_back(loc_ref);
+    location_ref_to_id_map.emplace(loc_ref, next_location_ref_id++);
 }
 
 const TraceData::Location & TraceData::get_location(const OTF2_LocationRef loc_ref) {
@@ -181,15 +182,12 @@ OTF2_LocationRef TraceData::get_location_ref(TraceData::location_ref_list_t::siz
     return location_ref_list[offset];
 }
 
-TraceData::location_ref_list_t::size_type TraceData::get_location_offset(OTF2_LocationRef loc_ref) const {
-    const auto begin = location_ref_list.begin();
-    const auto end = location_ref_list.end();
-    TraceData::location_ref_list_t::const_iterator iter = std::lower_bound(begin, end, loc_ref);
-    TraceData::location_ref_list_t::size_type dist = std::distance(begin, iter);
-    if(location_ref_list[dist] != loc_ref) {
-        throw std::invalid_argument("No such loc_ref in get_location_offset");
+uint64_t TraceData::get_location_offset(OTF2_LocationRef loc_ref) const {
+    const auto itr = location_ref_to_id_map.find(loc_ref);
+    if(itr != location_ref_to_id_map.end()) {
+        return itr->second;
     }
-    return dist;
+    return INVALID_SIZE;
 }
 
 const TraceData::SystemTreeNode & TraceData::find_system_tree_node(const OTF2_SystemTreeNodeRef node_ref) {
@@ -238,6 +236,14 @@ const std::string & TraceData::Region::get_desc() const {
     return *desc_str;
 }
 
+const TraceData::Location & TraceData::Region::get_location() const {
+    if(location == nullptr) {
+        const Location & my_location = trace_data->get_location(loc);
+        location = &my_location;
+    }
+    return *location;
+}
+
 void TraceData::put_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef self, const OTF2_StringRef name, const OTF2_StringRef guid, const OTF2_StringRef desc, const OTF2_RegionRole role, const OTF2_Paradigm paradigm, const OTF2_RegionFlag region_flag, const OTF2_StringRef source_file, const uint32_t begin_line_number, const uint32_t end_line_number) {
     regions_map[loc_ref].emplace(std::piecewise_construct, std::forward_as_tuple(self), std::forward_as_tuple(this, loc_ref, self, name, guid, desc, role, paradigm, region_flag, source_file, begin_line_number, end_line_number));
 }
@@ -279,6 +285,13 @@ const TraceData::Region & TraceData::Event::get_parent() const {
     return *parent_region;
 }
 
+const TraceData::Location & TraceData::Event::get_location() const {
+    if(location == nullptr) {
+        const Location & my_location = trace_data->get_location(loc);
+        location = &my_location;
+    }
+    return *location;
+}
 
 void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const uint64_t size) {
     put_event(loc_ref, event_type, time, event_position, object, subject, get_last_entered(loc_ref), size);

@@ -82,6 +82,7 @@ protected:
     void draw_selected_task(const Cairo::RefPtr<Cairo::Context>& cr);
     void draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Context>&cr);
     void draw_selected_guid_events(const Cairo::RefPtr<Cairo::Context>&cr);
+    void draw_selected_connections(const Cairo::RefPtr<Cairo::Context>&cr);
 
     inline uint64_t location_for_coord(double y) const;
    

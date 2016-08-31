@@ -91,19 +91,19 @@ void IdleDetector::find_idle_regions() {
                     break;
                 }
             }
+            if(next_full == num_samples) {
+                // Never got back to full occupancy
+                continue;
+            }
             candidate_regions.push_back(std::make_tuple(candidate_start, candidate_end, next_full, occupancy[candidate_start], occupancy[candidate_end], occupancy[next_full]));
-            //std::cerr << std::setw(10) << std::right << region_num << " ";
-            //std::cerr << std::setw(11) << std::right << candidate_start << " ";
-            //std::cerr << std::setw(11) << std::right << candidate_end << " ";
-            //std::cerr << std::setw(10) << std::right << next_full << " ";
-            //std::cerr << std::setw(10) << std::right << occupancy[candidate_start] << " ";
-            //std::cerr << std::setw(10) << std::right << occupancy[candidate_end] << " ";
-            //std::cerr << std::setw(10) << std::right << occupancy[next_full] << "\n";
             ++region_num;
         }
     }
 
     const uint64_t num_candidates = candidate_regions.size();
+    if(num_candidates == 0) {
+        return;
+    }
     for(uint64_t candidate = 0; candidate < num_candidates - 1; ++candidate) {
         const uint64_t my_start = std::get<0>(candidate_regions[candidate]);
         const uint64_t next_start = std::get<0>(candidate_regions[candidate+1]);
@@ -124,7 +124,6 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
     }
     uint64_t region_num = 0;
     for(const region_t & region : idle_regions) {
-        //std::cerr << "Processing region " << region_num << std::endl;
         const uint64_t region_end = std::get<1>(region);
         const uint64_t rel_time = (uint64_t)std::round(region_end * interval);
         const uint64_t offset = trace_data->get_global_offset();

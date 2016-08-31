@@ -23,7 +23,10 @@ target_link_libraries(atv ${LIBS})
 add_executable (atv_analyze main_analyze.cpp $<TARGET_OBJECTS:analysis> $<TARGET_OBJECTS:callbacks> $<TARGET_OBJECTS:trace_reader>)
 target_link_libraries(atv_analyze ${LIBS})
 
-INSTALL(TARGETS atv atv_analyze
+add_executable (atv_dump_trace main_dump_trace.cpp $<TARGET_OBJECTS:callbacks> $<TARGET_OBJECTS:trace_reader>)
+target_link_libraries(atv_dump_trace ${LIBS})
+
+INSTALL(TARGETS atv atv_analyze atv_dump_trace
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib

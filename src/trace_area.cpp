@@ -111,11 +111,6 @@ uint64_t TraceArea::location_for_coord(double y) const {
 
 void TraceArea::draw_separators(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->save();
-    double line_width = 1.0;
-    double unused = 0.0;
-    // convert desired line_width in pixels to user space
-    cr->device_to_user_distance(unused, line_width);
-    cr->set_line_width(line_width);
     cr->set_source_rgb(0.0, 0.0, 0.0);
     for(uint64_t loc = 1; loc < num_locs; ++loc) {
         double  y_pos = (loc*height_per_loc) + ((loc-1.0)*spacing_between_locs) + 5.0;
@@ -126,7 +121,11 @@ void TraceArea::draw_separators(const Cairo::RefPtr<Cairo::Context>& cr) {
         cr->device_to_user(unused, y_pos);
         cr->move_to(zoom_start, y_pos);
         cr->line_to(zoom_stop + zoom_start,  y_pos);
+        cr->save();
+        cr->set_identity_matrix();
+        cr->set_line_width(1.0);
         cr->stroke();
+        cr->restore();
     }
     cr->restore();
 }
@@ -153,7 +152,11 @@ void TraceArea::draw_tasks(const Cairo::RefPtr<Cairo::Context>& cr) {
         if(stop_iterator != events.end()) {
             stop_iterator = std::next(stop_iterator, 1);
         }
-        for(auto & it = start_iterator; it != stop_iterator; ++it) {
+        if(start_iterator == events.end()) {
+            // No events to draw
+            continue;
+        }
+        for(auto & it = start_iterator; it != stop_iterator && it != events.end(); ++it) {
             const auto & event = *it;
             switch(event.get_event_type()) {
                 case TraceData::EventType::Enter: {
@@ -219,10 +222,13 @@ void TraceArea::draw_into_local_surface() {
     cr->paint();
 
     if(mode == Mode::TaskExecution) {
-        draw_separators(cr);
+        //draw_separators(cr);
         draw_tasks(cr);
         if(!selected_related_guid.empty()) {
             draw_selected_guid_events(cr);
+        }
+        if(!selected_connections.empty()) {
+            draw_selected_connections(cr);
         }
     } else if(mode == Mode::Concurrency) {
         draw_concurrency(cr);
@@ -269,6 +275,45 @@ void TraceArea::draw_selected_task(const Cairo::RefPtr<Cairo::Context>& cr) {
     cr->restore();
 }
 
+void TraceArea::draw_selected_connections(const Cairo::RefPtr<Cairo::Context>&cr) {
+    cr->save();
+    const uint64_t global_offset = trace_data->get_global_offset();
+    for(const auto event_ptr : selected_connections) {
+        const double evt_time = event_ptr->get_time() - global_offset;
+        const std::string guid = event_ptr->get_object().get_guid();
+        TraceData::event_ptr_list_t related_events(trace_data->get_events_for_guid(guid));
+        uint64_t runnable_time = TraceData::INVALID_TIME;
+        OTF2_LocationRef runnable_loc_ref = TraceData::INVALID_LOCATION_REF;
+        for(const auto related_event : related_events) {
+            if(related_event->get_event_type() == TraceData::EventType::TaskRunnable 
+                    && related_event->get_object().get_guid() == guid) {
+                runnable_time = related_event->get_time() - global_offset;
+                runnable_loc_ref = related_event->get_loc();
+                break;
+            }    
+        }
+        if(runnable_time == TraceData::INVALID_TIME || runnable_loc_ref == TraceData::INVALID_LOCATION_REF) {
+            std::cerr << "WARNING: no TaskRunnable event found for connection" << std::endl;
+        } else {
+            set_runnable_color(cr);
+            cr->set_antialias(Cairo::ANTIALIAS_DEFAULT);
+            const OTF2_LocationRef enter_loc_ref = event_ptr->get_loc();
+            const uint64_t enter_loc = trace_data->get_location_offset(enter_loc_ref);
+            const double enter_loc_pos = (enter_loc*height_per_loc) + ((enter_loc-1.0)*spacing_between_locs)  + 10.0 + (height_per_loc * 0.5);
+            const uint64_t runnable_loc = trace_data->get_location_offset(runnable_loc_ref);
+            const double runnable_loc_pos = (runnable_loc*height_per_loc) + ((runnable_loc-1.0)*spacing_between_locs)  + 10.0 + (height_per_loc * 0.5);
+            cr->move_to(evt_time, enter_loc_pos);
+            cr->line_to(runnable_time, runnable_loc_pos);
+            cr->save();
+            cr->set_identity_matrix();
+            cr->set_line_width(1.0);
+            cr->stroke();
+            cr->restore();
+        }
+
+    }
+    cr->restore();
+}
 
 void TraceArea::draw_selected_task_dependencies(const Cairo::RefPtr<Cairo::Context>&cr) {
     if(selected_event_start == nullptr) {
@@ -619,7 +664,7 @@ void TraceArea::set_zoom_range(const double start, const double stop) {
 
 
 void TraceArea::set_selected_related_guid(const std::string & guid) {
-    clear_selected_connections();
+    //clear_selected_connections();
     selected_related_guid = guid;
     redraw();
 }
@@ -629,7 +674,12 @@ void TraceArea::set_selected_connections(const IdleDetector::event_list_t & even
     if(!selected_connections.empty()) {
         uint64_t global_offset = trace_data->get_global_offset();
         const uint64_t last_event_time  = selected_connections.front()->get_time() - global_offset;
-        const uint64_t first_event_time = selected_connections.back()->get_time() - global_offset;
+        const auto & first_event = selected_connections.back();
+        auto start_task = trace_data->get_task_at_time(first_event->get_loc(), first_event->get_time() + 1);
+        uint64_t first_event_time = TraceData::INVALID_TIME;
+        if(start_task) {
+            first_event_time = start_task->second.get_time() - global_offset;    
+        }
         set_zoom_range(first_event_time, last_event_time);
         zoom_out();
     }
@@ -637,4 +687,5 @@ void TraceArea::set_selected_connections(const IdleDetector::event_list_t & even
 
 void TraceArea::clear_selected_connections() {
     selected_connections.clear();
+    redraw();
 }

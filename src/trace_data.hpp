@@ -13,8 +13,6 @@
 #include <set>
 #include <initializer_list>
 
-#include <sparsehash/dense_hash_map>
-
 class TraceData {
 public:
     class SystemTreeNode {
@@ -128,6 +126,7 @@ public:
         mutable std::string const * name_str;
         mutable std::string const * guid_str;
         mutable std::string const * desc_str;
+        mutable Location const * location;
 
         public:
         Region(const Region& mE)            = default;
@@ -178,13 +177,14 @@ public:
         const std::string & get_name() const;
         const std::string & get_guid() const;
         const std::string & get_desc() const;
+        const Location & get_location() const;
 
         std::string to_string() const {
             std::stringstream ss;
             ss << "(";
             if(get_self() != INVALID_REGION_REF) {
                 ss << get_self() << " ";
-                if(get_name_ref() != INVALID_STRING_REF) {
+                if(get_name_ref() != INVALID_STRING_REF && !get_name().empty()) {
                     ss << get_name() << " ";
                 }
                 if(get_guid_ref() != INVALID_STRING_REF) {
@@ -225,7 +225,7 @@ public:
         const OTF2_LocationRef loc;
         const EventType event_type;
         const OTF2_TimeStamp time;
-        uint64_t event_position;
+        const uint64_t event_position;
         const OTF2_RegionRef object;
         const OTF2_RegionRef subject;
         const OTF2_RegionRef parent;
@@ -234,6 +234,7 @@ public:
         mutable Region const * object_region;
         mutable Region const * subject_region;
         mutable Region const * parent_region;
+        mutable Location const * location;
         const int seq_entry_id;
 
         public:
@@ -299,6 +300,7 @@ public:
         uint64_t get_size() const { return size; };
         int get_seq_entry_id() const { return seq_entry_id; };
 
+        const Location & get_location() const;
         const Region & get_object() const;
         const Region & get_subject() const;
         const Region & get_parent() const;
@@ -381,6 +383,9 @@ public:
 
     using location_ref_list_t = std::vector<OTF2_LocationRef>;
     location_ref_list_t location_ref_list;
+    using location_ref_to_id_map_t = std::map<OTF2_LocationRef, uint64_t>;
+    location_ref_to_id_map_t location_ref_to_id_map;
+    uint64_t next_location_ref_id = 0; 
 
     using region_map_t = std::unordered_map<OTF2_RegionRef, Region>;
     using regions_map_t = std::map<OTF2_LocationRef, region_map_t>;
@@ -452,7 +457,7 @@ public:
     const location_map_t & get_locations() const;
     const location_ref_list_t & get_location_refs() const;
     OTF2_LocationRef get_location_ref(location_ref_list_t::size_type offset) const;
-    location_ref_list_t::size_type get_location_offset(OTF2_LocationRef) const;
+    uint64_t get_location_offset(OTF2_LocationRef loc_ref) const;
 
     void put_region(const OTF2_LocationRef loc, const OTF2_RegionRef self, const OTF2_StringRef name, const OTF2_StringRef guid, const OTF2_StringRef desc, const OTF2_RegionRole role, const OTF2_Paradigm paradigm, const OTF2_RegionFlag region_flag, const OTF2_StringRef source_file, const uint32_t begin_line_number, const uint32_t end_line_number);
     const Region & get_region(const OTF2_LocationRef loc_ref, const OTF2_RegionRef region_ref);

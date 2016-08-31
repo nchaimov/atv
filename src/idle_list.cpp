@@ -62,7 +62,7 @@ void IdleList::on_new_data(uint64_t num_locs, TraceData * trace_data) {
     if(idle_detector != nullptr) {
         delete idle_detector;
     }
-    idle_detector = new IdleDetector{trace_data, 0.0001, 3, 2};
+    idle_detector = new IdleDetector{trace_data, 0.0001, 50, 2};
     update_model();
 }
 
