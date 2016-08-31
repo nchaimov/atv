@@ -69,7 +69,7 @@ void IdleDetector::find_idle_regions() {
     std::vector<uint64_t> candidate_ends;
     for(uint64_t sample = 1; sample < num_samples-1; ++sample) {
         if(occupancy[sample] < occupancy_threshold && occupancy[sample+1] >= occupancy_threshold) {
-            candidate_ends.push_back(sample);    
+            candidate_ends.emplace_back(sample);    
         }
     }
 
@@ -95,7 +95,7 @@ void IdleDetector::find_idle_regions() {
                 // Never got back to full occupancy
                 continue;
             }
-            candidate_regions.push_back(std::make_tuple(candidate_start, candidate_end, next_full, occupancy[candidate_start], occupancy[candidate_end], occupancy[next_full]));
+            candidate_regions.emplace_back(std::make_tuple(candidate_start, candidate_end, next_full, occupancy[candidate_start], occupancy[candidate_end], occupancy[next_full]));
             ++region_num;
         }
     }
@@ -108,13 +108,11 @@ void IdleDetector::find_idle_regions() {
         const uint64_t my_start = std::get<0>(candidate_regions[candidate]);
         const uint64_t next_start = std::get<0>(candidate_regions[candidate+1]);
         if(my_start != next_start) {
-            idle_regions.push_back(candidate_regions[candidate]);        
-            const uint64_t my_end = std::get<1>(candidate_regions[candidate]);
-            starved_time += (my_end - my_start) * interval_sec;
+            idle_regions.emplace_back(candidate_regions[candidate]);        
         }
     }
     // Last region
-    idle_regions.push_back(candidate_regions[num_candidates-1]);
+    idle_regions.emplace_back(candidate_regions[num_candidates-1]);
 }
 
 void IdleDetector::find_region_boundary_events(const bool forward, const bool less_than, const bool from_start, const uint64_t threshold, IdleDetector::event_list_t & list) {
@@ -127,6 +125,7 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
         const uint64_t region_end = std::get<1>(region);
         const uint64_t rel_time = (uint64_t)std::round(region_end * interval);
         const uint64_t offset = trace_data->get_global_offset();
+        const uint64_t trace_end = offset + trace_data->get_trace_length();
         // Global time is the trace timestamp of the end of the idle region
         const uint64_t global_time = offset + rel_time;
         const uint64_t next_full_occ_time = std::get<2>(region);
@@ -192,12 +191,20 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
                     if((forward && next_time < candidate_next_time) || (!forward && next_time > candidate_next_time)) {
                         candidate_next_time = next_time;
                     }
-                } else {
-                    std::cerr << "ERROR: No task found for candidate time." << std::endl;
-                    throw std::runtime_error("Task not found in region.");
                 }
             }
-            if(tasks_running == 1) {
+            if(tasks_running == 0) {
+                if(from_start && candidate_time < trace_end) {
+                    ++candidate_time;
+                    continue;
+                } else if(!from_start && candidate_time > offset) {
+                    --candidate_time;
+                    continue;
+                } else {
+                    std::cerr << "ERROR: No tasks found for candidate time." << std::endl;
+                    throw std::runtime_error("Task not found in region.");
+                }
+            } else if(tasks_running == 1) {
                 end_event = candidate_event;
             }
             if((forward && candidate_next_time == std::numeric_limits<uint64_t>::max()) || (!forward && candidate_next_time == std::numeric_limits<uint64_t>::min())) {
@@ -233,7 +240,7 @@ void IdleDetector::find_region_boundary_events(const bool forward, const bool le
                 std::cerr << "ERROR: End event should not occur before previous full occupancy!" << std::endl;
                 throw std::runtime_error("Region-breaking task outside region.");
             }
-            list.push_back(end_event);
+            list.emplace_back(end_event);
         }
         ++region_num;
     }
@@ -257,6 +264,7 @@ void IdleDetector::find_connection_between(const TraceData::Event * start_event,
     path.emplace_back(end_event);
     while(current_event != nullptr && current_event != start_event && current_event->get_time() > start_event_time) {
         // When did the current event become runnable?
+        const std::string & name = current_event->get_object().get_name();
         const std::string & guid = current_event->get_object().get_guid();
         const auto & events = trace_data->get_events_for_guid(guid);
         uint64_t runnable_time = TraceData::INVALID_TIME;
@@ -285,7 +293,11 @@ void IdleDetector::find_connection_between(const TraceData::Event * start_event,
                 current_event = next_event;
                 path.emplace_back(current_event);
             } else {
-                throw std::runtime_error("Bad trace");
+                // processRequestEdt is expected to become runnable with no predecessor task
+                if(name != "processRequestEdt") {
+                    std::cerr << "Warning: Task " << name << " " << guid << " became runnable independent of any task." << std::endl; 
+                }
+                current_event = nullptr;
             }
         }
 
@@ -299,6 +311,31 @@ void IdleDetector::find_connections() {
         const TraceData::Event * start_event = region_start_events[region_num];
         const TraceData::Event * end_event   = region_end_events[region_num];
         find_connection_between(start_event, end_event);
+    }
+}
+
+void IdleDetector::find_invalid_regions() {
+    idle_region_list_t all_idle_regions;
+    event_list_t all_region_start_events;
+    event_list_t all_region_end_events;
+    events_list_t all_connections;
+    idle_regions.swap(all_idle_regions);
+    region_start_events.swap(all_region_start_events);
+    region_end_events.swap(all_region_end_events);
+    connections.swap(all_connections);
+    uint64_t region_num = 0;
+    for(auto region : all_idle_regions) {
+        const TraceData::Event * start_event = all_region_start_events[region_num];
+        const TraceData::Event * end_event   = all_region_end_events[region_num];
+        const auto & conn = all_connections[region_num];
+        // Idle regions that start and end with the same event or have
+        // no connections don't make sense.
+        if(start_event != end_event && conn.size() > 1) {
+            idle_regions.emplace_back(region);
+            region_start_events.emplace_back(start_event);
+            region_end_events.emplace_back(end_event);
+            connections.emplace_back(conn);
+        }
         ++region_num;
     }
 }
@@ -313,6 +350,7 @@ void IdleDetector::analyze() {
     find_region_boundary_events(true,  false, true,  occupancy_threshold, region_start_events);
     find_region_boundary_events(true,  true,  false, occupancy_threshold, region_end_events);
     find_connections();
+    find_invalid_regions();
 }
 
 std::string IdleDetector::get_report() const {
@@ -344,6 +382,7 @@ std::string IdleDetector::get_report() const {
     ss << std::setw(16) << std::left << "Breaking Task" << " ";
     ss << std::setw(16) << std::left << "GUID" << "\n";
     uint64_t region_num = 0;
+    double starved_time = 0.0;
     for(auto region : idle_regions) {
         const double start =  (std::get<0>(region) * interval_sec);
         const double end =  (std::get<1>(region) * interval_sec);
@@ -365,6 +404,7 @@ std::string IdleDetector::get_report() const {
         ss << std::setw(16) << std::left << break_name << " ";
         ss << std::setw(16) << std::left << break_guid << "\n";
         ++region_num;
+        starved_time += len;
     }
 
     ss << "\n";
@@ -373,6 +413,11 @@ std::string IdleDetector::get_report() const {
 
     ss << std::endl << std::endl;
 
+    ss << std::setw(6)  << std::left << "Region" << " ";
+    ss << std::setw(30) << std::left << "Task" << " ";
+    ss << std::setw(20) << std::left << "GUID" << " ";
+    ss << std::setw(15) << std::left << "Time" << " ";
+    ss << std::setw(10) << std::left << "Occupancy" << std::endl;
     region_num = 0;
     for(auto region : idle_regions) {
         ATV_UNUSED(region);
@@ -385,8 +430,13 @@ std::string IdleDetector::get_report() const {
             }        
             first_event = false;
             const auto & obj = event->get_object();
+            const double event_time = event->get_seconds();
+            const uint64_t offset_time = (uint64_t) std::ceil(event_time / interval_sec);
+            const uint64_t occ = occupancy.at(offset_time);        
             ss << std::setw(30) << std::left << obj.get_name() << " ";
-            ss << std::setw(20) << std::left << obj.get_guid() << std::endl;
+            ss << std::setw(20) << std::left << obj.get_guid() << " ";
+            ss << std::setw(15) << std::left << std::setprecision(5) << event_time << " ";
+            ss << std::setw(10) << std::left << std::fixed << occ << std::endl;
         }
         ++region_num;
         ss << std::endl;

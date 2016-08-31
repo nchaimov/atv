@@ -389,6 +389,7 @@ void MainWindow::on_scroll_value_changed() {
 
 void MainWindow::set_scroll_allowed(const bool allowed) {
     scrollbar.set_sensitive(allowed);
+    scrollbar.set_visible(allowed);
 }
 
 void MainWindow::set_selected_related_guid(const std::string & guid) {

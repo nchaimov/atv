@@ -30,7 +30,14 @@ void IdleList::update_model() {
         tree_store = Gtk::TreeStore::create(columns);
         set_model(tree_store);
         
-        idle_detector->analyze();
+        try {
+            idle_detector->analyze();
+        } catch(const std::runtime_error & e) {
+            std::cerr << "Error while running idle_detector: " << e.what() << std::endl;
+            delete idle_detector;
+            idle_detector = nullptr;
+            return;
+        }
 
         const auto & idle_regions  = idle_detector->get_idle_regions();
         const auto & end_events    = idle_detector->get_region_end_events();

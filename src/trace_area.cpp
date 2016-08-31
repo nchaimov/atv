@@ -22,7 +22,9 @@ TraceArea::TraceArea(MainWindow * main_window) : num_locs(0), trace_data(nullptr
 }
 
 TraceArea::~TraceArea() {
-
+    if(menu != nullptr) {
+        delete menu;
+    }
 }
 
 void TraceArea::set_create_color(const Cairo::RefPtr<Cairo::Context>& cr) {
@@ -205,6 +207,10 @@ void TraceArea::set_scale(const Cairo::RefPtr<Cairo::Context>& cr) {
 }
 
 void TraceArea::draw_into_local_surface() {
+    if(zoom_stop < zoom_start) {
+        throw std::runtime_error("End of region to draw is before start of region!");
+    }
+
     Gtk::Allocation allocation = get_allocation();
     const int width = allocation.get_width();
     const int height = allocation.get_height();

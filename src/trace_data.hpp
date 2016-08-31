@@ -292,7 +292,7 @@ public:
             return "Invalid event type";
         };
         OTF2_TimeStamp get_time() const { return time; };
-        double get_seconds() const { return (double)get_time() / (double)trace_data->get_timer_resolution(); };
+        double get_seconds() const { return (double)(get_time() - trace_data->get_global_offset()) / (double)trace_data->get_timer_resolution(); };
         uint64_t get_event_position() const { return event_position; };
         OTF2_RegionRef get_object_ref() const { return object; };
         OTF2_RegionRef get_subject_ref() const { return subject; };
