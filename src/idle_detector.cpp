@@ -311,6 +311,7 @@ void IdleDetector::find_connections() {
         const TraceData::Event * start_event = region_start_events[region_num];
         const TraceData::Event * end_event   = region_end_events[region_num];
         find_connection_between(start_event, end_event);
+        ++region_num;
     }
 }
 
