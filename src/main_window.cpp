@@ -273,6 +273,8 @@ bool MainWindow::setup_load_traces(GdkEventAny * event) {
 
 void MainWindow::load_traces() {
     using namespace std::placeholders;
+    //TraceData * my_trace_data = callbacks.get_trace_data();
+    //my_trace_data->set_ignore_event_names({"processRequestEdt"});
     TraceReader reader{filename, locations, &callbacks};
     reader.read_traces(std::bind(&MainWindow::update_status, this, _1));
     //TODO handle errors

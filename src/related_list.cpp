@@ -1,4 +1,5 @@
 #include <set>
+#include <unordered_set>
 #include <iostream>
 #include <sstream>
 #include <gtkmm/treeselection.h>
@@ -13,6 +14,7 @@ RelatedList::RelatedList(MainWindow * main_window) : Gtk::TreeView(),
     Glib::RefPtr<Gtk::TreeSelection> tree_selection = get_selection();
     tree_selection->set_select_function(sigc::mem_fun(*this, &RelatedList::select_function));
     tree_selection->signal_changed().connect(sigc::mem_fun(*this, &RelatedList::on_selection_changed));
+    set_fixed_height_mode(true);
 
 }
 
@@ -21,8 +23,9 @@ RelatedList::~RelatedList() {
 
 void RelatedList::update_model() {
     if(trace_data != nullptr) {
+        unset_model();
         tree_store = Gtk::TreeStore::create(columns);
-        set_model(tree_store);
+        tree_store->unset_default_sort_func();
         
         Gtk::TreeModel::Row data_acquired_row = *(tree_store->append());
         data_acquired_row[columns.col_id] = 1;
@@ -164,6 +167,7 @@ void RelatedList::update_model() {
             }
         }
 
+        set_model(tree_store);
         show_all_children();
         expand_all();
     }

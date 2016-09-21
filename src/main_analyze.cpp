@@ -10,6 +10,7 @@ int main(int argc, char * argv[]) {
     DefaultCallbacks callbacks;
     TraceData * trace_data = callbacks.get_trace_data();
     trace_data->set_selective_guid_map_events({TraceData::EventType::TaskRunnable});
+    trace_data->set_ignore_event_names({"processRequestEdt"});
     TraceReader reader{filename, locations, &callbacks};
     reader.read_traces();      
     IdleDetector idle_detector(trace_data, 0.0001, 50, 2);

@@ -13,6 +13,9 @@
 #include <set>
 #include <initializer_list>
 
+#include "utils.hpp"
+
+
 class TraceData {
 public:
     class SystemTreeNode {
@@ -422,6 +425,10 @@ public:
     bool limit_events = false;
     std::set<EventType> guid_map_event_types;
 
+    bool limit_names = false;
+    std::set<std::string> ignore_event_names;
+
+
 public:
 
     static constexpr OTF2_LocationRef INVALID_LOCATION_REF = std::numeric_limits<OTF2_LocationRef>::max();
@@ -492,6 +499,7 @@ public:
     void set_last_entered(OTF2_LocationRef loc_ref, OTF2_RegionRef region);
 
     void set_selective_guid_map_events(std::initializer_list<EventType> event_types);
+    void set_ignore_event_names(std::initializer_list<std::string> names);
 };
 
 #endif // TRACE_DATA_HPP

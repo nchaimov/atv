@@ -8,6 +8,8 @@
 #include "trace_data.hpp"
 #include "utils.hpp"
 
+static ATV_NATIVE_TLS OTF2_StringRef last_guid_ref = TraceData::INVALID_STRING_REF;
+
 TraceData::TraceData() :
     cur_loc(0),
     invalid_system_tree_node(this, 
@@ -298,6 +300,14 @@ void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_
 }
 
 void TraceData::put_event(const OTF2_LocationRef loc_ref, const EventType event_type, const OTF2_TimeStamp time, uint64_t event_position, const OTF2_RegionRef object, const OTF2_RegionRef subject, const OTF2_RegionRef parent, const uint64_t size) {
+    if(limit_names) {
+        const TraceData::Region & obj_region = get_region(loc_ref, object);
+        const std::string & name = obj_region.get_name();
+        if(ignore_event_names.find(name) != ignore_event_names.end()) {
+            // Skip if event name is in ignore list
+            return;
+        }
+    }
     Event * event;
     auto & vect = events_map[loc_ref];
     int seq_id = -1;
@@ -507,6 +517,16 @@ void TraceData::set_selective_guid_map_events(std::initializer_list<TraceData::E
     } else {
         guid_map_event_types.insert(event_types);
         limit_events = true;
+    }
+}
+
+void TraceData::set_ignore_event_names(std::initializer_list<std::string> names) {
+    ignore_event_names.clear();
+    if(names.size() == 0) {
+        limit_names = false; 
+    } else {
+        ignore_event_names.insert(names);
+        limit_names = true;
     }
 }
 
